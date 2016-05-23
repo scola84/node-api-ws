@@ -1,0 +1,13 @@
+{
+  "name": "@scola/api-ws",
+  "version": "0.0.0",
+  "description": "WebSocket API",
+  "repository": "github:scola84/node-api-ws",
+  "author": "M.C. van den Boogaart <scola@kvdb.name>",
+  "license": "MIT",
+  "main": "index.js",
+  "devDependencies": {
+    "@scola/api-http": "^1.0.0",
+    "babel-preset-es2015": "^6.9.0"
+  }
+}
