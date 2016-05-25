@@ -9,5 +9,8 @@
   "devDependencies": {
     "@scola/api-http": "^1.0.0",
     "babel-preset-es2015": "^6.9.0"
+  },
+  "dependencies": {
+    "@scola/events": "^2.0.0"
   }
 }
