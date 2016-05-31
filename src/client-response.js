@@ -1,6 +1,6 @@
-const stream = require('stream');
+import { Readable } from 'stream';
 
-class ClientResponse extends stream.Readable {
+export default class ClientResponse extends Readable {
   constructor(connection, statusCode, headers, body) {
     super({
       objectMode: true
@@ -21,5 +21,3 @@ class ClientResponse extends stream.Readable {
     this.body = null;
   }
 }
-
-module.exports = ClientResponse;

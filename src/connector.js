@@ -1,13 +1,13 @@
-const events = require('@scola/events');
-const Connection = require('./connection');
+import EventEmitter from '@scola/events';
+import Connection from './connection';
 
-class WsConnector extends events.EventEmitter {
-  constructor(server, router, codec, options) {
+export default class Connector extends EventEmitter {
+  constructor(server, codec, router, options) {
     super();
 
     this.server = server;
-    this.router = router;
     this.codec = codec;
+    this.router = router;
     this.options = options;
     this.connections = new Set();
 
@@ -40,8 +40,8 @@ class WsConnector extends events.EventEmitter {
   }
 
   handleConnection(socket) {
-    const connection = new Connection(this.router, socket,
-      this.codec, this.options);
+    const connection = new Connection(socket, this.codec,
+      this.router, this.options);
 
     this.connections.add(connection);
     this.bindConnection(connection);
@@ -68,5 +68,3 @@ class WsConnector extends events.EventEmitter {
     this.emit('error', error);
   }
 }
-
-module.exports = WsConnector;

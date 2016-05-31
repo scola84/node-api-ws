@@ -1,32 +1,52 @@
-const events = require('@scola/events');
-const url = require('url');
-const http = require('@scola/api-http');
+import EventEmitter from '@scola/events';
+import { parseUrl } from '@scola/http';
+import { ServerRequest, ServerResponse } from '@scola/api-http';
 
-const ClientRequest = require('./client-request');
-const ClientResponse = require('./client-response');
-const ServerRequestAdapter = require('./server-request-adapter');
-const ServerResponseAdapter = require('./server-response-adapter');
+import ClientRequest from './client-request';
+import ClientResponse from './client-response';
+import ServerRequestAdapter from './server-request-adapter';
+import ServerResponseAdapter from './server-response-adapter';
 
-class Connection extends events.EventEmitter {
-  constructor(router, socket, codec, options) {
+export default class Connection extends EventEmitter {
+  constructor(socket, codec, router, options) {
     super();
 
-    this.router = router;
     this.socket = socket;
     this.codec = codec;
+    this.router = router;
 
     this.options = Object.assign({
       idHeader: 'x-id'
     }, options);
 
-    const address = this.normalizeAddress(socket);
-    this.remoteAddress = address.remoteAddress;
-    this.remotePort = address.remotePort;
-
     this.id = 0;
     this.requests = {};
 
     this.bindSocket();
+  }
+
+  get headers() {
+    if (this.socket.upgradeReq) {
+      return this.socket.upgradeReq.connection.headers;
+    }
+
+    return {};
+  }
+
+  get remoteAddress() {
+    if (this.socket.upgradeReq) {
+      return this.socket.upgradeReq.connection.remoteAddress;
+    }
+
+    return parseUrl(this.socket.url).hostname;
+  }
+
+  get remotePort() {
+    if (this.socket.upgradeReq) {
+      return this.socket.upgradeReq.connection.remotePort;
+    }
+
+    return parseUrl(this.socket.url).port;
   }
 
   close(code, reason) {
@@ -117,8 +137,8 @@ class Connection extends events.EventEmitter {
     const requestAdapter = new ServerRequestAdapter(this, ...data);
     const responseAdapter = new ServerResponseAdapter(this);
 
-    const request = new http.ServerRequest(requestAdapter);
-    const response = new http.ServerResponse(responseAdapter);
+    const request = new ServerRequest(requestAdapter);
+    const response = new ServerResponse(responseAdapter);
 
     if (request.getHeader(this.options.idHeader)) {
       response.setHeader(this.options.idHeader,
@@ -162,21 +182,4 @@ class Connection extends events.EventEmitter {
 
     callback(null, data);
   }
-
-  normalizeAddress(socket) {
-    const address = {};
-
-    if (socket.url) {
-      const parsedUrl = url.parse(socket.url);
-      address.remoteAddress = parsedUrl.hostname;
-      address.remotePort = parsedUrl.port;
-    } else if (socket.upgradeReq) {
-      address.remoteAddress = socket.upgradeReq.connection.remoteAddress;
-      address.remotePort = socket.upgradeReq.connection.remotePort;
-    }
-
-    return address;
-  }
 }
-
-module.exports = Connection;

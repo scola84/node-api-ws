@@ -1,6 +1,6 @@
-const events = require('events');
+import EventEmitter from '@scola/events';
 
-class ClientRequest extends events.EventEmitter {
+export default class ClientRequest extends EventEmitter {
   constructor(connection, options, callback) {
     super();
 
@@ -53,5 +53,3 @@ class ClientRequest extends events.EventEmitter {
     this.write(data, encoding, callback);
   }
 }
-
-module.exports = ClientRequest;

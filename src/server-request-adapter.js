@@ -1,6 +1,6 @@
-const stream = require('stream');
+import { Readable } from 'stream';
 
-class ServerRequestAdapter extends stream.Readable {
+export default class ServerRequestAdapter extends Readable {
   constructor(connection, requestLine, headers, body) {
     super({
       objectMode: true
@@ -20,5 +20,3 @@ class ServerRequestAdapter extends stream.Readable {
     this.body = null;
   }
 }
-
-module.exports = ServerRequestAdapter;
