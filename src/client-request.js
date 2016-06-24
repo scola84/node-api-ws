@@ -11,7 +11,7 @@ export default class ClientRequest extends EventEmitter {
     this.path = options.path || '/';
 
     this._header = '';
-    this._headers = options.headers;
+    this._headers = options.headers || {};
     this._headersSent = false;
 
     this.finished = false;
