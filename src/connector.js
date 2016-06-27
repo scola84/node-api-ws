@@ -5,66 +5,69 @@ export default class Connector extends EventEmitter {
   constructor(server, codec, router, options) {
     super();
 
-    this.server = server;
-    this.codec = codec;
-    this.router = router;
-    this.options = options;
-    this.connections = new Set();
+    this._server = server;
+    this._codec = codec;
+    this._router = router;
+    this._options = options;
+    this._connections = new Set();
 
-    this.bindServer();
+    this._bindServer();
   }
 
   close(code, reason, callback) {
-    this.unbindServer();
-    this.closeConnections(code, reason);
-    callback();
+    this._unbindServer();
+    this._closeConnections(code, reason);
+
+    if (callback) {
+      callback();
+    }
   }
 
   closeConnections(code, reason) {
-    this.connections.forEach((connection) => {
+    this._connections.forEach((connection) => {
       connection.close(code, reason);
-      this.unbindConnection(connection);
+      this._unbindConnection(connection);
     });
 
-    this.connections.clear();
+    this._connections.clear();
   }
 
-  bindServer() {
-    this.bind(this.server, 'connection', this.handleConnection);
-    this.bind(this.server, 'error', this.handleError);
+  _bindServer() {
+    this.bind(this._server, 'connection', this._handleConnection);
+    this.bind(this._server, 'error', this._handleError);
   }
 
-  unbindServer() {
-    this.unbind(this.server, 'connection', this.handleConnection);
-    this.unbind(this.server, 'error', this.handleError);
+  _unbindServer() {
+    this.unbind(this._server, 'connection', this._handleConnection);
+    this.unbind(this._server, 'error', this._handleError);
   }
 
-  handleConnection(socket) {
-    const connection = new Connection(socket, this.codec,
-      this.router, this.options);
+  _handleConnection(socket) {
+    const connection = new Connection(socket, this._codec,
+      this._router, this._options);
 
-    this.connections.add(connection);
-    this.bindConnection(connection);
+    this._connections.add(connection);
+    this._bindConnection(connection);
     this.emit('connection', connection);
   }
 
-  bindConnection(connection) {
-    this.bind(connection, 'close', this.handleClose);
-    this.bind(connection, 'error', this.handleError);
+  _bindConnection(connection) {
+    this.bind(connection, 'close', this._handleClose);
+    this.bind(connection, 'error', this._handleError);
   }
 
-  unbindConnection(connection) {
-    this.unbind(connection, 'close', this.handleClose);
-    this.unbind(connection, 'error', this.handleError);
+  _unbindConnection(connection) {
+    this.unbind(connection, 'close', this._handleClose);
+    this.unbind(connection, 'error', this._handleError);
   }
 
-  handleClose(event, connection) {
-    this.connections.delete(connection);
-    this.unbindConnection(connection);
+  _handleClose(event, connection) {
+    this._connections.delete(connection);
+    this._unbindConnection(connection);
     this.emit('close', event, connection);
   }
 
-  handleError(error) {
+  _handleError(error) {
     this.emit('error', error);
   }
 }

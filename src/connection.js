@@ -15,14 +15,14 @@ export default class Connection extends EventEmitter {
     this.codec = codec;
     this.router = router;
 
-    this.options = Object.assign({
+    this._options = Object.assign({
       idHeader: 'x-id'
     }, options);
 
-    this.id = 0;
-    this.requests = {};
+    this._id = 0;
+    this._requests = {};
 
-    this.bindSocket();
+    this._bindSocket();
   }
 
   get headers() {
@@ -51,7 +51,7 @@ export default class Connection extends EventEmitter {
 
   close(code, reason) {
     this.socket.close(code, reason);
-    this.unbindSocket();
+    this._unbindSocket();
   }
 
   request(options, callback) {
@@ -59,50 +59,50 @@ export default class Connection extends EventEmitter {
 
     if (callback) {
       options.headers = Object.assign(options.headers || {}, {
-        [this.options.idHeader]: ++this.id
+        [this._options.idHeader]: ++this._id
       });
     }
 
     const request = new ClientRequest(this, options, callback);
 
     if (callback) {
-      this.requests[this.id] = request;
+      this._requests[this._id] = request;
     }
 
     return request;
   }
 
-  bindSocket() {
-    this.socket.onclose = this.handleClose.bind(this);
-    this.socket.onerror = this.handleError.bind(this);
-    this.socket.onmessage = this.handleMessage.bind(this);
-    this.socket.onopen = this.handleOpen.bind(this);
+  _bindSocket() {
+    this.socket.onclose = this._handleClose.bind(this);
+    this.socket.onerror = this._handleError.bind(this);
+    this.socket.onmessage = this._handleMessage.bind(this);
+    this.socket.onopen = this._handleOpen.bind(this);
   }
 
-  unbindSocket() {
+  _unbindSocket() {
     this.socket.onclose = null;
     this.socket.onerror = null;
     this.socket.onmessage = null;
     this.socket.onopen = null;
   }
 
-  handleClose(event) {
+  _handleClose(event) {
     if (event.final) {
-      this.unbindSocket();
+      this._unbindSocket();
     }
 
     this.emit('close', event, this);
   }
 
-  handleError(error) {
+  _handleError(error) {
     this.emit('error', error);
   }
 
-  handleOpen(attempts) {
+  _handleOpen(attempts) {
     this.emit('open', attempts);
   }
 
-  handleMessage(encodedData) {
+  _handleMessage(encodedData) {
     encodedData = encodedData.data ? encodedData.data : encodedData;
     const decoder = new this.codec.Decoder();
 
@@ -115,7 +115,7 @@ export default class Connection extends EventEmitter {
     decoder.once('data', (data) => {
       decoder.removeAllListeners();
 
-      this.checkProtocol(data, (error) => {
+      this._checkProtocol(data, (error) => {
         if (error) {
           this.close(1002);
           this.emit('error', new Error('Protocol error: ' + error.message));
@@ -123,9 +123,9 @@ export default class Connection extends EventEmitter {
         }
 
         if (typeof data[0] === 'string') {
-          this.handleRequest(data);
+          this._handleRequest(data);
         } else {
-          this.handleResponse(data);
+          this._handleResponse(data);
         }
       });
     });
@@ -133,35 +133,35 @@ export default class Connection extends EventEmitter {
     decoder.end(encodedData);
   }
 
-  handleRequest(data) {
+  _handleRequest(data) {
     const requestAdapter = new ServerRequestAdapter(this, ...data);
     const responseAdapter = new ServerResponseAdapter(this);
 
     const request = new ServerRequest(requestAdapter);
     const response = new ServerResponse(responseAdapter);
 
-    if (request.getHeader(this.options.idHeader)) {
-      response.setHeader(this.options.idHeader,
-        request.getHeader(this.options.idHeader));
+    if (request.getHeader(this._options.idHeader)) {
+      response.setHeader(this._options.idHeader,
+        request.getHeader(this._options.idHeader));
     }
 
     this.router.handleRequest(request, response);
   }
 
-  handleResponse(data) {
+  _handleResponse(data) {
     const response = new ClientResponse(this, ...data);
 
-    if (response.getHeader(this.options.idHeader)) {
-      const id = Number(response.getHeader(this.options.idHeader));
+    if (response.getHeader(this._options.idHeader)) {
+      const id = Number(response.getHeader(this._options.idHeader));
 
-      if (this.requests[id]) {
-        this.requests[id].handleResponse(response);
-        delete this.requests[id];
+      if (this._requests[id]) {
+        this._requests[id].handleResponse(response);
+        delete this._requests[id];
       }
     }
   }
 
-  checkProtocol(data, callback) {
+  _checkProtocol(data, callback) {
     if (!Array.isArray(data) || data.length !== 3) {
       callback(new Error('Message has an invalid structure'));
       return;
