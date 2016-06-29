@@ -5,7 +5,6 @@ export default class ClientRequest extends EventEmitter {
     super();
 
     this.connection = connection;
-    this.callback = callback;
 
     this.method = options.method || 'GET';
     this.path = options.path || '/';
@@ -13,12 +12,15 @@ export default class ClientRequest extends EventEmitter {
     this._header = '';
     this._headers = options.headers || {};
     this._headersSent = false;
+    this._callback = callback;
 
     this.finished = false;
   }
 
   handleResponse(response) {
-    this.callback(response);
+    if (this._callback) {
+      this._callback(response);
+    }
   }
 
   write(data, encoding, callback) {
