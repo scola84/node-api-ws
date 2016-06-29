@@ -1,4 +1,5 @@
-import EventEmitter from '@scola/events';
+import EventEmitter from 'events';
+import { bind, unbind } from '@scola/bind';
 import Connection from './connection';
 
 export default class Connector extends EventEmitter {
@@ -33,13 +34,13 @@ export default class Connector extends EventEmitter {
   }
 
   _bindServer() {
-    this.bind(this._server, 'connection', this._handleConnection);
-    this.bind(this._server, 'error', this._handleError);
+    bind(this, this._server, 'connection', this._handleConnection);
+    bind(this, this._server, 'error', this._handleError);
   }
 
   _unbindServer() {
-    this.unbind(this._server, 'connection', this._handleConnection);
-    this.unbind(this._server, 'error', this._handleError);
+    unbind(this, this._server, 'connection', this._handleConnection);
+    unbind(this, this._server, 'error', this._handleError);
   }
 
   _handleConnection(socket) {
@@ -52,13 +53,13 @@ export default class Connector extends EventEmitter {
   }
 
   _bindConnection(connection) {
-    this.bind(connection, 'close', this._handleClose);
-    this.bind(connection, 'error', this._handleError);
+    bind(this, connection, 'close', this._handleClose);
+    bind(this, connection, 'error', this._handleError);
   }
 
   _unbindConnection(connection) {
-    this.unbind(connection, 'close', this._handleClose);
-    this.unbind(connection, 'error', this._handleError);
+    unbind(this, connection, 'close', this._handleClose);
+    unbind(this, connection, 'error', this._handleError);
   }
 
   _handleClose(event, connection) {

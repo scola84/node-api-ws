@@ -1,5 +1,5 @@
 import { parse as parseUrl } from 'url';
-import EventEmitter from '@scola/events';
+import EventEmitter from 'events';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
 
 import ClientRequest from './client-request';
