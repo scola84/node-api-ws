@@ -1,6 +1,7 @@
 import { parse as parseUrl } from 'url';
 import EventEmitter from 'events';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
+import { bind, unbind } from '@scola/bind';
 
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
@@ -73,17 +74,17 @@ export default class Connection extends EventEmitter {
   }
 
   _bindSocket() {
-    this.socket.onclose = this._handleClose.bind(this);
-    this.socket.onerror = this._handleError.bind(this);
-    this.socket.onmessage = this._handleMessage.bind(this);
-    this.socket.onopen = this._handleOpen.bind(this);
+    bind(this, this.socket, 'close', this._handleClose);
+    bind(this, this.socket, 'error', this._handleError);
+    bind(this, this.socket, 'message', this._handleMessage);
+    bind(this, this.socket, 'open', this._handleOpen);
   }
 
   _unbindSocket() {
-    this.socket.onclose = null;
-    this.socket.onerror = null;
-    this.socket.onmessage = null;
-    this.socket.onopen = null;
+    unbind(this, this.socket, 'close', this._handleClose);
+    unbind(this, this.socket, 'error', this._handleError);
+    unbind(this, this.socket, 'message', this._handleMessage);
+    unbind(this, this.socket, 'open', this._handleOpen);
   }
 
   _handleClose(event) {
