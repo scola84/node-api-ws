@@ -56,7 +56,13 @@ export default class Connection extends EventEmitter {
   }
 
   request(options, callback) {
-    options = Object.assign({}, options);
+    if (typeof options === 'string') {
+      options = {
+        path: options
+      };
+    } else {
+      options = Object.assign({}, options);
+    }
 
     if (callback) {
       options.headers = Object.assign(options.headers || {}, {

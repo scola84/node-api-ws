@@ -1,4 +1,5 @@
 import EventEmitter from 'events';
+import { stringify as formatQuery } from 'querystring';
 
 export default class ClientRequest extends EventEmitter {
   constructor(connection, options, callback) {
@@ -8,6 +9,10 @@ export default class ClientRequest extends EventEmitter {
 
     this.method = options.method || 'GET';
     this.path = options.path || '/';
+
+    if (options.query) {
+      this.path += '?' + formatQuery(options.query);
+    }
 
     this._header = '';
     this._headers = options.headers || {};
