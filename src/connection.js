@@ -174,7 +174,7 @@ export default class Connection extends EventEmitter {
       return;
     }
 
-    const isRequest = (/^(GET|POST|PUT|DELETE)\s(.+)$/).test(data[0]);
+    const isRequest = (/^(GET|POST|PUT|DELETE|SUB|PUB)\s(.+)$/).test(data[0]);
     const isResponse = typeof data[0] === 'number';
 
     if (!isRequest && !isResponse) {
