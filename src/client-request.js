@@ -44,6 +44,8 @@ export default class ClientRequest extends EventEmitter {
         return;
       }
 
+      console.log('write', encodedData);
+
       this.connection.socket.send(encodedData, callback);
     });
 

@@ -1,5 +1,4 @@
 import EventEmitter from 'events';
-import { bind, unbind } from '@scola/bind';
 import Connection from './connection';
 
 export default class Connector extends EventEmitter {
@@ -10,7 +9,12 @@ export default class Connector extends EventEmitter {
     this._codec = codec;
     this._router = router;
     this._options = options;
+
     this._connections = new Set();
+
+    this._handleConnection = (s) => this._connection(s);
+    this._handleClose = (e, c) => this._close(e, c);
+    this._handleError = (e) => this._error(e);
 
     this._bindServer();
   }
@@ -24,7 +28,17 @@ export default class Connector extends EventEmitter {
     }
   }
 
-  closeConnections(code, reason) {
+  _bindServer() {
+    this._server.addListener('connection', this._handleConnection);
+    this._server.addListener('error', this._handleError);
+  }
+
+  _unbindServer() {
+    this._server.removeListener('connection', this._handleConnection);
+    this._server.removeListener('error', this._handleError);
+  }
+
+  _closeConnections(code, reason) {
     this._connections.forEach((connection) => {
       connection.close(code, reason);
       this._unbindConnection(connection);
@@ -33,42 +47,34 @@ export default class Connector extends EventEmitter {
     this._connections.clear();
   }
 
-  _bindServer() {
-    bind(this, this._server, 'connection', this._handleConnection);
-    bind(this, this._server, 'error', this._handleError);
+  _bindConnection(connection) {
+    connection.addListener('close', this._handleClose);
+    connection.addListener('error', this._handleError);
   }
 
-  _unbindServer() {
-    unbind(this, this._server, 'connection', this._handleConnection);
-    unbind(this, this._server, 'error', this._handleError);
+  _unbindConnection(connection) {
+    connection.removeListener('close', this._handleClose);
+    connection.removeListener('error', this._handleError);
   }
 
-  _handleConnection(socket) {
+  _connection(socket) {
     const connection = new Connection(socket, this._codec,
       this._router, this._options);
 
     this._connections.add(connection);
     this._bindConnection(connection);
+
     this.emit('connection', connection);
   }
 
-  _bindConnection(connection) {
-    bind(this, connection, 'close', this._handleClose);
-    bind(this, connection, 'error', this._handleError);
-  }
-
-  _unbindConnection(connection) {
-    unbind(this, connection, 'close', this._handleClose);
-    unbind(this, connection, 'error', this._handleError);
-  }
-
-  _handleClose(event, connection) {
+  _close(event, connection) {
     this._connections.delete(connection);
     this._unbindConnection(connection);
+
     this.emit('close', event, connection);
   }
 
-  _handleError(error) {
+  _error(error) {
     this.emit('error', error);
   }
 }

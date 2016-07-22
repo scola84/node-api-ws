@@ -1,7 +1,6 @@
 import { parse as parseUrl } from 'url';
 import EventEmitter from 'events';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
-import { bind, unbind } from '@scola/bind';
 
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
@@ -22,6 +21,11 @@ export default class Connection extends EventEmitter {
 
     this._id = 0;
     this._requests = {};
+
+    this._handleClose = (e) => this._close(e);
+    this._handleError = (e) => this._error(e);
+    this._handleMessage = (d) => this._message(d);
+    this._handleOpen = (a) => this._open(a);
 
     this._bindSocket();
   }
@@ -52,7 +56,14 @@ export default class Connection extends EventEmitter {
 
   close(code, reason) {
     this.socket.close(code, reason);
-    this._unbindSocket();
+
+    this._close({
+      code,
+      reason,
+      final: true
+    });
+
+    return this;
   }
 
   request(options, callback) {
@@ -80,20 +91,20 @@ export default class Connection extends EventEmitter {
   }
 
   _bindSocket() {
-    bind(this, this.socket, 'close', this._handleClose);
-    bind(this, this.socket, 'error', this._handleError);
-    bind(this, this.socket, 'message', this._handleMessage);
-    bind(this, this.socket, 'open', this._handleOpen);
+    this.socket.addListener('close', this._handleClose);
+    this.socket.addListener('error', this._handleError);
+    this.socket.addListener('message', this._handleMessage);
+    this.socket.addListener('open', this._handleOpen);
   }
 
   _unbindSocket() {
-    unbind(this, this.socket, 'close', this._handleClose);
-    unbind(this, this.socket, 'error', this._handleError);
-    unbind(this, this.socket, 'message', this._handleMessage);
-    unbind(this, this.socket, 'open', this._handleOpen);
+    this.socket.removeListener('close', this._handleClose);
+    this.socket.removeListener('error', this._handleError);
+    this.socket.removeListener('message', this._handleMessage);
+    this.socket.removeListener('open', this._handleOpen);
   }
 
-  _handleClose(event) {
+  _close(event) {
     if (event.final) {
       this._unbindSocket();
     }
@@ -101,17 +112,19 @@ export default class Connection extends EventEmitter {
     this.emit('close', event, this);
   }
 
-  _handleError(error) {
+  _error(error) {
     this.emit('error', error);
   }
 
-  _handleOpen(attempts) {
+  _open(attempts) {
     this.emit('open', attempts);
   }
 
-  _handleMessage(encodedData) {
+  _message(encodedData) {
     encodedData = encodedData.data ? encodedData.data : encodedData;
     const decoder = new this.codec.Decoder();
+
+    console.log('_message', encodedData);
 
     decoder.once('error', (error) => {
       decoder.removeAllListeners();
@@ -130,9 +143,9 @@ export default class Connection extends EventEmitter {
         }
 
         if (typeof data[0] === 'string') {
-          this._handleRequest(data);
+          this._request(data);
         } else {
-          this._handleResponse(data);
+          this._response(data);
         }
       });
     });
@@ -140,7 +153,7 @@ export default class Connection extends EventEmitter {
     decoder.end(encodedData);
   }
 
-  _handleRequest(data) {
+  _request(data) {
     const requestAdapter = new ServerRequestAdapter(this, ...data);
     const responseAdapter = new ServerResponseAdapter(this);
 
@@ -155,7 +168,7 @@ export default class Connection extends EventEmitter {
     this.router.handleRequest(request, response);
   }
 
-  _handleResponse(data) {
+  _response(data) {
     const response = new ClientResponse(this, ...data);
 
     if (response.getHeader(this._options.idHeader)) {
