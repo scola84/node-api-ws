@@ -124,8 +124,6 @@ export default class Connection extends EventEmitter {
     encodedData = encodedData.data ? encodedData.data : encodedData;
     const decoder = new this.codec.Decoder();
 
-    console.log('_message', encodedData);
-
     decoder.once('error', (error) => {
       decoder.removeAllListeners();
       this.close(1003);
