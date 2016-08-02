@@ -19,13 +19,10 @@ export default class Connector extends EventEmitter {
     this._bindServer();
   }
 
-  close(code, reason, callback) {
+  close(code, reason) {
     this._unbindServer();
     this._closeConnections(code, reason);
-
-    if (callback) {
-      callback();
-    }
+    this._server.close();
   }
 
   _bindServer() {
@@ -74,7 +71,7 @@ export default class Connector extends EventEmitter {
     this.emit('close', event, connection);
   }
 
-  _error(error) {
-    this.emit('error', error);
+  _error(event, connection) {
+    this.emit('error', event, connection);
   }
 }

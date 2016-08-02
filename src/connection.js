@@ -24,8 +24,8 @@ export default class Connection extends EventEmitter {
 
     this._handleClose = (e) => this._close(e);
     this._handleError = (e) => this._error(e);
-    this._handleMessage = (d) => this._message(d);
-    this._handleOpen = (a) => this._open(a);
+    this._handleMessage = (e) => this._message(e);
+    this._handleOpen = (e) => this._open(e);
 
     this._bindSocket();
   }
@@ -91,10 +91,10 @@ export default class Connection extends EventEmitter {
   }
 
   _bindSocket() {
-    this.socket.addListener('close', this._handleClose);
-    this.socket.addListener('error', this._handleError);
-    this.socket.addListener('message', this._handleMessage);
-    this.socket.addListener('open', this._handleOpen);
+    this.socket.addEventListener('close', this._handleClose);
+    this.socket.addEventListener('error', this._handleError);
+    this.socket.addEventListener('message', this._handleMessage);
+    this.socket.addEventListener('open', this._handleOpen);
   }
 
   _unbindSocket() {
@@ -112,16 +112,15 @@ export default class Connection extends EventEmitter {
     this.emit('close', event, this);
   }
 
-  _error(error) {
-    this.emit('error', error);
+  _error(event) {
+    this.emit('error', event, this);
   }
 
-  _open(attempts) {
-    this.emit('open', attempts);
+  _open(event) {
+    this.emit('open', event, this);
   }
 
-  _message(encodedData) {
-    encodedData = encodedData.data ? encodedData.data : encodedData;
+  _message(event) {
     const decoder = new this.codec.Decoder();
 
     decoder.once('error', (error) => {
@@ -148,7 +147,7 @@ export default class Connection extends EventEmitter {
       });
     });
 
-    decoder.end(encodedData);
+    decoder.end(event.data);
   }
 
   _request(data) {
