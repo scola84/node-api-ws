@@ -135,7 +135,8 @@ export default class Connection extends EventEmitter {
       this._checkProtocol(data, (error) => {
         if (error) {
           this.close(1002);
-          this.emit('error', new Error('Protocol error: ' + error.message));
+          this.emit('error', new Error('400 invalid_protocol ' +
+            error.message));
           return;
         }
 

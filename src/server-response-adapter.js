@@ -49,7 +49,7 @@ export default class ServerResponseAdapter extends EventEmitter {
       encoder.removeAllListeners();
 
       if (this.connection.socket.readyState !== this.connection.socket.OPEN) {
-        this.emit('error', new Error('Socket is not open'));
+        this.emit('error', new Error('500 invalid_socket'));
         return;
       }
 
