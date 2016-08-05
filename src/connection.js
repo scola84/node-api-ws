@@ -55,6 +55,14 @@ export default class Connection extends EventEmitter {
     return parseUrl(this.socket.url).port;
   }
 
+  getMaxListeners() {
+    if (typeof this._maxListeners === 'undefined') {
+      return EventEmitter.defaultMaxListeners;
+    }
+
+    return this._maxListeners;
+  }
+
   close(code, reason) {
     this.socket.close(code, reason);
 
