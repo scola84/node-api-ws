@@ -1,4 +1,5 @@
 import EventEmitter from 'events';
+import { ScolaError } from '@scola/error';
 
 export default class ServerResponseAdapter extends EventEmitter {
   constructor(connection) {
@@ -49,7 +50,7 @@ export default class ServerResponseAdapter extends EventEmitter {
       encoder.removeAllListeners();
 
       if (this.connection.socket.readyState !== this.connection.socket.OPEN) {
-        this.emit('error', new Error('500 invalid_socket'));
+        this.emit('error', new ScolaError('500 invalid_socket'));
         return;
       }
 

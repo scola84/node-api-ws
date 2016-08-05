@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import { stringify as formatQuery } from 'querystring';
+import { ScolaError } from '@scola/error';
 
 export default class ClientRequest extends EventEmitter {
   constructor(connection, options, callback) {
@@ -40,7 +41,7 @@ export default class ClientRequest extends EventEmitter {
       encoder.removeAllListeners();
 
       if (this.connection.socket.readyState !== this.connection.socket.OPEN) {
-        this.emit('error', new Error('500 invalid_socket'));
+        this.emit('error', new ScolaError('500 invalid_socket'));
         return;
       }
 

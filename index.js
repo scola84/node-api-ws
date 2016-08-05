@@ -1,18 +1,5 @@
 export { default as ClientRequest } from './src/client-request';
 export { default as ClientResponse } from './src/client-response';
-
-import Connection from './src/connection';
-import Connector from './src/connector';
-
-export {
-  Connection,
-  Connector
-};
-
-export function connection(socket, codec, router, options) {
-  return new Connection(socket, codec, router, options);
-}
-
-export function connector(server, codec, router, options) {
-  return new Connector(server, codec, router, options);
-}
+export { default as Connection } from './src/connection';
+export { default as Connector} from './src/connector';
+export { default as data } from './src/i18n/data';

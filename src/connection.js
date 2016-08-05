@@ -1,6 +1,7 @@
 import { parse as parseUrl } from 'url';
 import EventEmitter from 'events';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
+import { ScolaError } from '@scola/error';
 
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
@@ -135,7 +136,7 @@ export default class Connection extends EventEmitter {
       this._checkProtocol(data, (error) => {
         if (error) {
           this.close(1002);
-          this.emit('error', new Error('400 invalid_protocol ' +
+          this.emit('error', new ScolaError('400 invalid_protocol ' +
             error.message));
           return;
         }
