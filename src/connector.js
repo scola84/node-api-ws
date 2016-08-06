@@ -2,27 +2,47 @@ import EventEmitter from 'events';
 import Connection from './connection';
 
 export default class Connector extends EventEmitter {
-  constructor(server, codec, router, options) {
+  constructor() {
     super();
 
-    this._server = server;
-    this._codec = codec;
-    this._router = router;
-    this._options = options;
+    this._server = null;
+    this._codec = null;
+    this._router = null;
+    this._options = null;
 
     this._connections = new Set();
 
     this._handleConnection = (s) => this._connection(s);
     this._handleClose = (e, c) => this._close(e, c);
     this._handleError = (e) => this._error(e);
-
-    this._bindServer();
   }
 
   close(code, reason) {
     this._unbindServer();
     this._closeConnections(code, reason);
     this._server.close();
+  }
+
+  server(server) {
+    this._server = server;
+    this._bindServer();
+
+    return this;
+  }
+
+  router(router) {
+    this._router = router;
+    return this;
+  }
+
+  codec(codec) {
+    this._codec = codec;
+    return this;
+  }
+
+  options(options) {
+    this._options = options;
+    return this;
   }
 
   _bindServer() {
@@ -55,8 +75,11 @@ export default class Connector extends EventEmitter {
   }
 
   _connection(socket) {
-    const connection = new Connection(socket, this._codec,
-      this._router, this._options);
+    const connection = new Connection()
+      .socket(socket)
+      .router(this._router)
+      .codec(this._codec)
+      .options(this._options);
 
     this._connections.add(connection);
     this._bindConnection(connection);

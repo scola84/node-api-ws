@@ -1,12 +1,12 @@
 import { Readable } from 'stream';
 
 export default class ServerRequestAdapter extends Readable {
-  constructor(connection, requestLine, headers, body) {
+  constructor(connection, mpq, headers, body) {
     super({
       objectMode: true
     });
 
-    const [method, url] = requestLine.split(' ');
+    const [method, url] = mpq.split(' ');
 
     this.connection = connection;
     this.method = method;

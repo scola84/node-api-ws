@@ -9,16 +9,15 @@ import ServerRequestAdapter from './server-request-adapter';
 import ServerResponseAdapter from './server-response-adapter';
 
 export default class Connection extends EventEmitter {
-  constructor(socket, codec, router, options) {
+  constructor() {
     super();
 
-    this.socket = socket;
-    this.codec = codec;
-    this.router = router;
-
-    this._options = Object.assign({
+    this._socket = null;
+    this._router = null;
+    this._codec = null;
+    this._options = {
       idHeader: 'x-id'
-    }, options);
+    };
 
     this._id = 0;
     this._requests = {};
@@ -27,44 +26,10 @@ export default class Connection extends EventEmitter {
     this._handleError = (e) => this._error(e);
     this._handleMessage = (e) => this._message(e);
     this._handleOpen = (e) => this._open(e);
-
-    this._bindSocket();
-  }
-
-  get headers() {
-    if (this.socket.upgradeReq) {
-      return this.socket.upgradeReq.connection.headers;
-    }
-
-    return {};
-  }
-
-  get remoteAddress() {
-    if (this.socket.upgradeReq) {
-      return this.socket.upgradeReq.connection.remoteAddress;
-    }
-
-    return parseUrl(this.socket.url).hostname;
-  }
-
-  get remotePort() {
-    if (this.socket.upgradeReq) {
-      return this.socket.upgradeReq.connection.remotePort;
-    }
-
-    return parseUrl(this.socket.url).port;
-  }
-
-  getMaxListeners() {
-    if (typeof this._maxListeners === 'undefined') {
-      return EventEmitter.defaultMaxListeners;
-    }
-
-    return this._maxListeners;
   }
 
   close(code, reason) {
-    this.socket.close(code, reason);
+    this._socket.close(code, reason);
 
     this._close({
       code,
@@ -75,42 +40,100 @@ export default class Connection extends EventEmitter {
     return this;
   }
 
-  request(options, callback) {
-    if (typeof options === 'string') {
-      options = {
-        path: options
-      };
+  socket(socket) {
+    if (typeof socket === 'undefined') {
+      return this._socket;
+    }
+
+    this._socket = socket;
+    this._bindSocket();
+
+    return this;
+  }
+
+  router(router) {
+    if (typeof router === 'undefined') {
+      return this._router;
+    }
+
+    this._router = router;
+    return this;
+  }
+
+  codec(codec) {
+    if (typeof codec === 'undefined') {
+      return this._codec;
+    }
+
+    this._codec = codec;
+    return this;
+  }
+
+  options(options) {
+    if (typeof options === 'undefined') {
+      return this._options;
+    }
+
+    Object.assign(this._options, options);
+    return this;
+  }
+
+  address(stringify) {
+    let address = null;
+    let port = null;
+
+    if (this._socket.upgradeReq) {
+      address = this._socket.upgradeReq.connection.remoteAddress;
+      port = this._socket.upgradeReq.connection.remotePort;
     } else {
-      options = Object.assign({}, options);
+      const url = parseUrl(this._socket.url);
+      address = url.hostname;
+      port = url.port;
     }
 
-    if (callback) {
-      options.headers = Object.assign(options.headers || {}, {
-        [this._options.idHeader]: ++this._id
-      });
+    if (stringify === true) {
+      return address + ':' + port;
     }
 
-    const request = new ClientRequest(this, options, callback);
+    return {
+      address,
+      port
+    };
+  }
 
-    if (callback) {
-      this._requests[this._id] = request;
+  request(request) {
+    if (typeof request === 'undefined') {
+      return new ClientRequest()
+        .connection(this);
     }
 
-    return request;
+    this._id += 1;
+    this._requests[this._id] = request;
+
+    request.header(this._options.idHeader, this._id);
+    return this;
+  }
+
+  getMaxListeners() {
+    if (typeof this._maxListeners === 'undefined') {
+      return EventEmitter.defaultMaxListeners;
+    }
+
+    return this._maxListeners;
   }
 
   _bindSocket() {
-    this.socket.addEventListener('close', this._handleClose);
-    this.socket.addEventListener('error', this._handleError);
-    this.socket.addEventListener('message', this._handleMessage);
-    this.socket.addEventListener('open', this._handleOpen);
+    this._socket.addEventListener('close', this._handleClose);
+    this._socket.addEventListener('error', this._handleError);
+    this._socket.addEventListener('message', this._handleMessage);
+    this._socket.addEventListener('open', this._handleOpen);
   }
 
   _unbindSocket() {
-    this.socket.removeListener('close', this._handleClose);
-    this.socket.removeListener('error', this._handleError);
-    this.socket.removeListener('message', this._handleMessage);
-    this.socket.removeListener('open', this._handleOpen);
+    this._socket.removeListener('close', this._handleClose);
+    this._socket.removeListener('error', this._handleError);
+    this._socket.removeListener('message', this._handleMessage);
+    this._socket.removeListener('open', this._handleOpen);
   }
 
   _close(event) {
@@ -130,7 +153,8 @@ export default class Connection extends EventEmitter {
   }
 
   _message(event) {
-    const decoder = new this.codec.Decoder();
+    const Decoder = this._codec.Decoder;
+    const decoder = new Decoder();
 
     decoder.once('error', (error) => {
       decoder.removeAllListeners();
@@ -167,19 +191,23 @@ export default class Connection extends EventEmitter {
     const request = new ServerRequest(requestAdapter);
     const response = new ServerResponse(responseAdapter);
 
-    if (request.getHeader(this._options.idHeader)) {
-      response.setHeader(this._options.idHeader,
-        request.getHeader(this._options.idHeader));
+    if (request.header(this._options.idHeader)) {
+      response.header(this._options.idHeader,
+        request.header(this._options.idHeader));
     }
 
-    this.router.handleRequest(request, response);
+    this._router.handleRequest(request, response);
   }
 
-  _response(data) {
-    const response = new ClientResponse(this, ...data);
+  _response([status, headers, body]) {
+    const response = new ClientResponse()
+      .connection(this)
+      .status(status)
+      .headers(headers)
+      .body(body);
 
-    if (response.getHeader(this._options.idHeader)) {
-      const id = Number(response.getHeader(this._options.idHeader));
+    if (response.header(this._options.idHeader)) {
+      const id = Number(response.header(this._options.idHeader));
 
       if (this._requests[id]) {
         this._requests[id].handleResponse(response);
@@ -198,7 +226,7 @@ export default class Connection extends EventEmitter {
     const isResponse = typeof data[0] === 'number';
 
     if (!isRequest && !isResponse) {
-      callback(new Error('Message identifier is invalid'));
+      callback(new Error('Message identifier is invalid: ' + data[0]));
       return;
     }
 
