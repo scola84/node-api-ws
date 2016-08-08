@@ -78,27 +78,16 @@ export default class Connection extends EventEmitter {
     return this;
   }
 
-  address(stringify) {
-    let address = null;
-    let port = null;
+  address() {
+    return this._socket.upgradeReq ?
+      this._socket.upgradeReq.connection.remoteAddress :
+      parseUrl(this._socket.url).hostname;
+  }
 
-    if (this._socket.upgradeReq) {
-      address = this._socket.upgradeReq.connection.remoteAddress;
-      port = this._socket.upgradeReq.connection.remotePort;
-    } else {
-      const url = parseUrl(this._socket.url);
-      address = url.hostname;
-      port = url.port;
-    }
-
-    if (stringify === true) {
-      return address + ':' + port;
-    }
-
-    return {
-      address,
-      port
-    };
+  port() {
+    return this._socket.upgradeReq ?
+      this._socket.upgradeReq.connection.remotePort :
+      parseUrl(this._socket.url).port;
   }
 
   request(request) {
