@@ -1,4 +1,4 @@
-import EventEmitter from 'events';
+import { EventEmitter } from '@scola/events';
 import Connection from './connection';
 
 export default class Connector extends EventEmitter {
@@ -13,7 +13,7 @@ export default class Connector extends EventEmitter {
     this._connections = new Set();
 
     this._handleConnection = (s) => this._connection(s);
-    this._handleClose = (e, c) => this._close(e, c);
+    this._handleClose = (e) => this._close(e);
     this._handleError = (e) => this._error(e);
   }
 
@@ -23,25 +23,25 @@ export default class Connector extends EventEmitter {
     this._server.close();
   }
 
-  server(server) {
-    this._server = server;
+  server(value) {
+    this._server = value;
     this._bindServer();
 
     return this;
   }
 
-  router(router) {
-    this._router = router;
+  router(value) {
+    this._router = value;
     return this;
   }
 
-  codec(codec) {
-    this._codec = codec;
+  codec(value) {
+    this._codec = value;
     return this;
   }
 
-  options(options) {
-    this._options = options;
+  options(value) {
+    this._options = value;
     return this;
   }
 
@@ -87,14 +87,14 @@ export default class Connector extends EventEmitter {
     this.emit('connection', connection);
   }
 
-  _close(event, connection) {
-    this._connections.delete(connection);
-    this._unbindConnection(connection);
+  _close(event) {
+    this._connections.delete(event.connection);
+    this._unbindConnection(event.connection);
 
-    this.emit('close', event, connection);
+    this.emit('close', event);
   }
 
-  _error(event, connection) {
-    this.emit('error', event, connection);
+  _error(event) {
+    this.emit('error', event);
   }
 }

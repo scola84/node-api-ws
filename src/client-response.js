@@ -13,26 +13,26 @@ export default class ClientResponse extends Readable {
     this._body = null;
   }
 
-  connection(connection) {
-    if (typeof connection === 'undefined') {
+  connection(value) {
+    if (typeof value === 'undefined') {
       return this._connection;
     }
 
-    this._connection = connection;
+    this._connection = value;
     return this;
   }
 
-  status(status) {
-    if (typeof status === 'undefined') {
+  status(value) {
+    if (typeof value === 'undefined') {
       return this._status;
     }
 
-    this._status = status;
+    this._status = value;
     return this;
   }
 
-  headers(headers) {
-    this._headers = headers;
+  headers(value) {
+    this._headers = value;
     return this;
   }
 
@@ -41,8 +41,8 @@ export default class ClientResponse extends Readable {
     return header && parse ? parseHeader(header) : header;
   }
 
-  body(body) {
-    this._body = body;
+  body(value) {
+    this._body = value;
     return this;
   }
 

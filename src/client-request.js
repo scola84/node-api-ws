@@ -1,6 +1,6 @@
-import EventEmitter from 'events';
 import { stringify as formatQuery } from 'querystring';
 import { ScolaError } from '@scola/error';
+import { EventEmitter } from '@scola/events';
 
 export default class ClientRequest extends EventEmitter {
   constructor() {
@@ -13,39 +13,39 @@ export default class ClientRequest extends EventEmitter {
     this._headers = {};
   }
 
-  connection(connection) {
-    if (typeof connection === 'undefined') {
+  connection(value) {
+    if (typeof value === 'undefined') {
       return this._connection;
     }
 
-    this._connection = connection;
+    this._connection = value;
     return this;
   }
 
-  method(method) {
-    if (typeof method === 'undefined') {
+  method(value) {
+    if (typeof value === 'undefined') {
       return this._method;
     }
 
-    this._method = method;
+    this._method = value;
     return this;
   }
 
-  path(path) {
-    if (typeof path === 'undefined') {
+  path(value) {
+    if (typeof value === 'undefined') {
       return this._path;
     }
 
-    this._path = path;
+    this._path = value;
     return this;
   }
 
-  query(query) {
-    if (typeof query === 'undefined') {
+  query(value) {
+    if (typeof value === 'undefined') {
       return this._query;
     }
 
-    this._query = query;
+    this._query = value;
     return this;
   }
 

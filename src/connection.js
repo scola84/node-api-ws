@@ -1,8 +1,7 @@
 import { parse as parseUrl } from 'url';
-import EventEmitter from 'events';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
 import { ScolaError } from '@scola/error';
-
+import { EventEmitter } from '@scola/events';
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';
@@ -40,41 +39,41 @@ export default class Connection extends EventEmitter {
     return this;
   }
 
-  socket(socket) {
-    if (typeof socket === 'undefined') {
+  socket(value) {
+    if (typeof value === 'undefined') {
       return this._socket;
     }
 
-    this._socket = socket;
+    this._socket = value;
     this._bindSocket();
 
     return this;
   }
 
-  router(router) {
-    if (typeof router === 'undefined') {
+  router(value) {
+    if (typeof value === 'undefined') {
       return this._router;
     }
 
-    this._router = router;
+    this._router = value;
     return this;
   }
 
-  codec(codec) {
-    if (typeof codec === 'undefined') {
+  codec(value) {
+    if (typeof value === 'undefined') {
       return this._codec;
     }
 
-    this._codec = codec;
+    this._codec = value;
     return this;
   }
 
-  options(options) {
-    if (typeof options === 'undefined') {
+  options(value) {
+    if (typeof value === 'undefined') {
       return this._options;
     }
 
-    Object.assign(this._options, options);
+    Object.assign(this._options, value);
     return this;
   }
 
@@ -90,25 +89,17 @@ export default class Connection extends EventEmitter {
       parseUrl(this._socket.url).port;
   }
 
-  request(request) {
-    if (typeof request === 'undefined') {
+  request(value) {
+    if (typeof value === 'undefined') {
       return new ClientRequest()
         .connection(this);
     }
 
     this._id += 1;
-    this._requests[this._id] = request;
+    this._requests[this._id] = value;
+    this._requests[this._id].header(this._options.idHeader, this._id);
 
-    request.header(this._options.idHeader, this._id);
     return this;
-  }
-
-  getMaxListeners() {
-    if (typeof this._maxListeners === 'undefined') {
-      return EventEmitter.defaultMaxListeners;
-    }
-
-    return this._maxListeners;
   }
 
   _bindSocket() {
@@ -130,15 +121,18 @@ export default class Connection extends EventEmitter {
       this._unbindSocket();
     }
 
-    this.emit('close', event, this);
+    event.connection = this;
+    this.emit('close', event);
   }
 
   _error(event) {
-    this.emit('error', event, this);
+    event.connection = this;
+    this.emit('error', event);
   }
 
   _open(event) {
-    this.emit('open', event, this);
+    event.connection = this;
+    this.emit('open', event);
   }
 
   _message(event) {

@@ -8,7 +8,7 @@
   "main": "./dist/api-ws.js",
   "jsnext:main": "index.js",
   "devDependencies": {
-    "rollup": "^0.26.3"
+    "rollup": "^0.34.13"
   },
   "scripts": {
     "build": "rollup -i index.js -o ./dist/api-ws.js -f cjs"
