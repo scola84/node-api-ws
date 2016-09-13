@@ -7,8 +7,13 @@
   "license": "MIT",
   "main": "./dist/api-ws.js",
   "jsnext:main": "index.js",
+  "dependencies": {
+    "@scola/api-http": "^1.0.0",
+    "@scola/error": "^4.0.0",
+    "@scola/events": "^3.0.0"
+  },
   "devDependencies": {
-    "rollup": "^0.34.13"
+    "rollup": "^0.35.9"
   },
   "scripts": {
     "build": "rollup -i index.js -o ./dist/api-ws.js -f cjs"
