@@ -20,7 +20,6 @@ export default class Connector extends EventEmitter {
   close(code, reason) {
     this._unbindServer();
     this._closeConnections(code, reason);
-    this._server.close();
   }
 
   server(value) {
