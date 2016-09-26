@@ -1,6 +1,6 @@
 {
   "name": "@scola/api-ws",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "WebSocket API",
   "repository": "github:scola84/node-api-ws",
   "author": "M.C. van den Boogaart <scola@kvdb.name>",
