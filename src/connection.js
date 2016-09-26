@@ -110,18 +110,26 @@ export default class Connection extends EventEmitter {
   }
 
   address() {
+    let address = null;
+    let port = null;
+
     if (this._socket.upgradeReq) {
-      return {
-        address: this._socket.upgradeReq.connection.remoteAddress,
-        port: this._socket.upgradeReq.connection.remotePort
-      };
+      if (this._socket.upgradeReq.headers['x-real-ip']) {
+        address = this._socket.upgradeReq.headers['x-real-ip'];
+        port = this._socket.upgradeReq.headers['x-real-port'];
+      } else {
+        address = this._socket.upgradeReq.connection.remoteAddress;
+        port = this._socket.upgradeReq.connection.remotePort;
+      }
+    } else {
+      const parsedUrl = parseUrl(this._socket.url);
+      address = parsedUrl.hostname;
+      port = parsedUrl.port;
     }
 
-    const parsedUrl = parseUrl(this._socket.url);
-
     return {
-      address: parsedUrl.hostname,
-      port: parsedUrl.port
+      address,
+      port
     };
   }
 
