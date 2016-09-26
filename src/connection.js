@@ -14,27 +14,33 @@ export default class Connection extends EventEmitter {
     this._socket = null;
     this._router = null;
     this._codec = null;
-    this._options = {
-      idHeader: 'x-id'
-    };
+
+    this._auto = true;
+    this._header = 'x-id';
 
     this._id = 0;
     this._requests = {};
+    this._interval = null;
 
     this._handleClose = (e) => this._close(e);
     this._handleError = (e) => this._error(e);
     this._handleMessage = (e) => this._message(e);
-    this._handleOpen = (e) => this._open(e);
+  }
+
+  open(event) {
+    this._open(event);
+    return this;
   }
 
   close(code, reason) {
-    this._socket.close(code, reason);
+    if (this._socket) {
+      this._socket.close(code, reason);
+    }
 
     this._close({
       code,
-      reason,
-      final: true
-    });
+      reason
+    }, true);
 
     return this;
   }
@@ -44,9 +50,26 @@ export default class Connection extends EventEmitter {
       return this._socket;
     }
 
+    if (this._socket) {
+      this._unbindSocket();
+    }
+
     this._socket = value;
     this._bindSocket();
 
+    if (this._auto) {
+      this._open({});
+    }
+
+    return this;
+  }
+
+  auto(value) {
+    if (typeof value === 'undefined') {
+      return this._auto;
+    }
+
+    this._auto = value;
     return this;
   }
 
@@ -68,12 +91,21 @@ export default class Connection extends EventEmitter {
     return this;
   }
 
-  options(value) {
+  header(value) {
     if (typeof value === 'undefined') {
-      return this._options;
+      return this._header;
     }
 
-    Object.assign(this._options, value);
+    this._header = value;
+    return this;
+  }
+
+  ping(duration) {
+    if (this._interval) {
+      clearInterval(this._interval);
+    }
+
+    this._interval = setInterval(() => this._socket.ping(), duration);
     return this;
   }
 
@@ -101,7 +133,7 @@ export default class Connection extends EventEmitter {
 
     this._id += 1;
     this._requests[this._id] = value;
-    this._requests[this._id].header(this._options.idHeader, this._id);
+    this._requests[this._id].header(this._header, this._id);
 
     return this;
   }
@@ -110,19 +142,32 @@ export default class Connection extends EventEmitter {
     this._socket.addEventListener('close', this._handleClose);
     this._socket.addEventListener('error', this._handleError);
     this._socket.addEventListener('message', this._handleMessage);
-    this._socket.addEventListener('open', this._handleOpen);
   }
 
   _unbindSocket() {
-    this._socket.removeListener('close', this._handleClose);
-    this._socket.removeListener('error', this._handleError);
-    this._socket.removeListener('message', this._handleMessage);
-    this._socket.removeListener('open', this._handleOpen);
+    if (this._socket.removeEventListener) {
+      this._socket.removeEventListener('close', this._handleClose);
+      this._socket.removeEventListener('error', this._handleError);
+      this._socket.removeEventListener('message', this._handleMessage);
+    } else {
+      this._socket.removeListener('close', this._handleClose);
+      this._socket.removeListener('error', this._handleError);
+      this._socket.removeListener('message', this._handleMessage);
+    }
   }
 
-  _close(event) {
-    if (event.final) {
+  _close(event, force = false) {
+    if (this._auto === false && force === false) {
+      return;
+    }
+
+    if (this._socket) {
       this._unbindSocket();
+    }
+
+    if (this._interval) {
+      clearInterval(this._interval);
+      this._interval = null;
     }
 
     event.connection = this;
@@ -153,22 +198,26 @@ export default class Connection extends EventEmitter {
       decoder.removeAllListeners();
 
       this._checkProtocol(data, (error) => {
-        if (error) {
-          this.close(1002);
-          this.emit('error', new ScolaError('400 invalid_protocol ' +
-            error.message));
-          return;
-        }
-
-        if (typeof data[0] === 'string') {
-          this._request(data);
-        } else {
-          this._response(data);
-        }
+        this._handleCheck(error, data);
       });
     });
 
     decoder.end(event.data);
+  }
+
+  _handleCheck(error, data) {
+    if (error) {
+      this.close(1002);
+      this.emit('error', new ScolaError('400 invalid_protocol ' +
+        error.message));
+      return;
+    }
+
+    if (typeof data[0] === 'string') {
+      this._request(data);
+    } else {
+      this._response(data);
+    }
   }
 
   _request(data) {
@@ -178,12 +227,16 @@ export default class Connection extends EventEmitter {
     const request = new ServerRequest(requestAdapter);
     const response = new ServerResponse(responseAdapter);
 
-    if (request.header(this._options.idHeader)) {
-      response.header(this._options.idHeader,
-        request.header(this._options.idHeader));
+    if (request.header(this._header)) {
+      response.header(this._header, request.header(this._header));
     }
 
     this._router.handleRequest(request, response);
+
+    this.emit('request', {
+      connection: this,
+      request
+    });
   }
 
   _response([status, headers, body]) {
@@ -193,14 +246,19 @@ export default class Connection extends EventEmitter {
       .headers(headers)
       .body(body);
 
-    if (response.header(this._options.idHeader)) {
-      const id = Number(response.header(this._options.idHeader));
+    if (response.header(this._header)) {
+      const id = Number(response.header(this._header));
 
       if (this._requests[id]) {
         this._requests[id].handleResponse(response);
         delete this._requests[id];
       }
     }
+
+    this.emit('response', {
+      connection: this,
+      response
+    });
   }
 
   _checkProtocol(data, callback) {

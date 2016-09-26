@@ -66,6 +66,12 @@ export default class ClientRequest extends EventEmitter {
   end(data, callback) {
     const Encoder = this._connection.codec().Encoder;
     const encoder = new Encoder();
+    const socket = this._connection.socket();
+
+    if (!socket) {
+      this.emit('error', new ScolaError('500 invalid_socket'));
+      return this;
+    }
 
     encoder.once('error', (error) => {
       encoder.removeAllListeners();
@@ -75,14 +81,12 @@ export default class ClientRequest extends EventEmitter {
     encoder.once('data', (encodedData) => {
       encoder.removeAllListeners();
 
-      if (this._connection.socket().readyState !==
-        this._connection.socket().OPEN) {
-
+      if (socket.readyState !== socket.OPEN) {
         this.emit('error', new ScolaError('500 invalid_socket'));
         return;
       }
 
-      this._connection.socket().send(encodedData);
+      socket.send(encodedData);
     });
 
     if (callback) {

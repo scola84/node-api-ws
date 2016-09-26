@@ -8,7 +8,8 @@ export default class Connector extends EventEmitter {
     this._server = null;
     this._codec = null;
     this._router = null;
-    this._options = null;
+    this._header = null;
+    this._ping = null;
 
     this._connections = new Set();
 
@@ -39,8 +40,13 @@ export default class Connector extends EventEmitter {
     return this;
   }
 
-  options(value) {
-    this._options = value;
+  header(value) {
+    this._header = value;
+    return this;
+  }
+
+  ping(value) {
+    this._ping = value;
     return this;
   }
 
@@ -77,8 +83,15 @@ export default class Connector extends EventEmitter {
     const connection = new Connection()
       .socket(socket)
       .router(this._router)
-      .codec(this._codec)
-      .options(this._options);
+      .codec(this._codec);
+
+    if (this._header) {
+      connection.header(this._header);
+    }
+
+    if (this._ping) {
+      connection.ping(this._ping);
+    }
 
     this._connections.add(connection);
     this._bindConnection(connection);
