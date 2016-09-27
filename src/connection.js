@@ -7,7 +7,7 @@ import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';
 import ServerResponseAdapter from './server-response-adapter';
 
-export default class Connection extends EventEmitter {
+export default class WsConnection extends EventEmitter {
   constructor() {
     super();
 

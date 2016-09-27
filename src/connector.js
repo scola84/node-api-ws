@@ -1,7 +1,7 @@
 import { EventEmitter } from '@scola/events';
-import Connection from './connection';
+import WsConnection from './connection';
 
-export default class Connector extends EventEmitter {
+export default class WsConnector extends EventEmitter {
   constructor() {
     super();
 
@@ -80,7 +80,7 @@ export default class Connector extends EventEmitter {
   }
 
   _connection(socket) {
-    const connection = new Connection()
+    const connection = new WsConnection()
       .socket(socket)
       .router(this._router)
       .codec(this._codec);
