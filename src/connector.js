@@ -1,4 +1,4 @@
-import { EventEmitter } from '@scola/events';
+import { EventEmitter } from 'events';
 import WsConnection from './connection';
 
 export default class WsConnector extends EventEmitter {

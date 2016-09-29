@@ -8,14 +8,19 @@
   "main": "./dist/api-ws.js",
   "jsnext:main": "index.js",
   "dependencies": {
-    "@scola/api-http": "^2.0.0",
-    "@scola/error": "^4.0.0",
-    "@scola/events": "^3.0.0"
+    "@scola/api-http": "^2.0.3",
+    "@scola/error": "^4.0.2"
   },
   "devDependencies": {
-    "rollup": "^0.36.0"
+    "rollup": "^0.36.1",
+    "rollup-plugin-buble": "^0.14.0"
   },
   "scripts": {
-    "build": "rollup -i index.js -o ./dist/api-ws.js -f cjs"
+    "build": "npm run cleanup && npm run rollup",
+    "build:min": "npm run build && npm run min",
+    "cleanup": "rm -rf dist",
+    "min": "uglifyjs dist/api-ws.js -m -o dist/api-ws.min.js",
+    "prepublish": "npm run build:min",
+    "rollup": "rollup -c"
   }
 }

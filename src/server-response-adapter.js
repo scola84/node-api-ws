@@ -1,5 +1,5 @@
+import { EventEmitter } from 'events';
 import { ScolaError } from '@scola/error';
-import { EventEmitter } from '@scola/events';
 
 export default class ServerResponseAdapter extends EventEmitter {
   constructor(connection) {
