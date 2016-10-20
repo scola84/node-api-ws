@@ -14,6 +14,7 @@ export default class WsConnection extends EventEmitter {
     this._socket = null;
     this._router = null;
     this._codec = null;
+    this._user = null;
 
     this._auto = true;
     this._header = 'x-id';
@@ -64,15 +65,6 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  auto(value) {
-    if (typeof value === 'undefined') {
-      return this._auto;
-    }
-
-    this._auto = value;
-    return this;
-  }
-
   router(value) {
     if (typeof value === 'undefined') {
       return this._router;
@@ -88,6 +80,28 @@ export default class WsConnection extends EventEmitter {
     }
 
     this._codec = value;
+    return this;
+  }
+
+  user(value) {
+    if (typeof value === 'undefined') {
+      return this._user;
+    }
+
+    if (this._user) {
+      return this;
+    }
+
+    this._user = value;
+    return this;
+  }
+
+  auto(value) {
+    if (typeof value === 'undefined') {
+      return this._auto;
+    }
+
+    this._auto = value;
     return this;
   }
 
