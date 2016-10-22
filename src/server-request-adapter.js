@@ -7,6 +7,11 @@ export default class ServerRequestAdapter extends Readable {
     });
 
     const [method, url] = mpq.split(' ');
+    const socket = connection.socket();
+
+    if (socket.upgradeReq) {
+      headers = Object.assign({}, socket.upgradeReq.headers, headers);
+    }
 
     this.connection = connection;
     this.method = method;

@@ -11,10 +11,11 @@ export default class WsConnection extends EventEmitter {
   constructor() {
     super();
 
-    this._socket = null;
-    this._router = null;
     this._codec = null;
+    this._socket = null;
     this._user = null;
+
+    this._router = null;
 
     this._auto = true;
     this._header = 'x-id';
@@ -46,6 +47,15 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  codec(value) {
+    if (typeof value === 'undefined') {
+      return this._codec;
+    }
+
+    this._codec = value;
+    return this;
+  }
+
   socket(value) {
     if (typeof value === 'undefined') {
       return this._socket;
@@ -65,34 +75,21 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  user(value) {
+    if (typeof value === 'undefined') {
+      return this._user;
+    }
+
+    this._user = value;
+    return this;
+  }
+
   router(value) {
     if (typeof value === 'undefined') {
       return this._router;
     }
 
     this._router = value;
-    return this;
-  }
-
-  codec(value) {
-    if (typeof value === 'undefined') {
-      return this._codec;
-    }
-
-    this._codec = value;
-    return this;
-  }
-
-  user(value) {
-    if (typeof value === 'undefined') {
-      return this._user;
-    }
-
-    if (this._user) {
-      return this;
-    }
-
-    this._user = value;
     return this;
   }
 
@@ -246,7 +243,7 @@ export default class WsConnection extends EventEmitter {
     const requestAdapter = new ServerRequestAdapter(this, ...data);
     const responseAdapter = new ServerResponseAdapter(this);
 
-    const request = new ServerRequest(requestAdapter);
+    const request = new ServerRequest(requestAdapter, this);
     const response = new ServerResponse(responseAdapter);
 
     if (request.header(this._header)) {
