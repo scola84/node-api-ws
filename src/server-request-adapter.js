@@ -11,6 +11,7 @@ export default class ServerRequestAdapter extends Readable {
 
     if (socket.upgradeReq) {
       headers = Object.assign({}, socket.upgradeReq.headers, headers);
+      delete headers.accept;
     }
 
     this.connection = connection;
