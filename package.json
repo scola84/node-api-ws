@@ -8,13 +8,13 @@
   "main": "./dist/api-ws.js",
   "jsnext:main": "index.js",
   "dependencies": {
-    "@scola/api-http": "^2.0.3",
-    "@scola/error": "^4.0.2"
+    "@scola/api-http": "^3.0.0",
+    "@scola/error": "^4.1.0"
   },
   "devDependencies": {
-    "rollup": "^0.36.1",
+    "rollup": "^0.36.3",
     "rollup-plugin-buble": "^0.14.0",
-    "uglify-js": "^2.7.3"
+    "uglify-js": "^2.7.4"
   },
   "scripts": {
     "build": "npm run cleanup && npm run rollup",
