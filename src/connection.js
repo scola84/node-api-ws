@@ -30,7 +30,9 @@ export default class WsConnection extends EventEmitter {
   }
 
   open(event) {
+    this.socket(event.socket);
     this._open(event);
+
     return this;
   }
 
