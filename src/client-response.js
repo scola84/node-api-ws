@@ -11,6 +11,7 @@ export default class ClientResponse extends Readable {
     this._status = null;
     this._headers = {};
     this._body = null;
+    this._data = null;
   }
 
   connection(value) {
@@ -33,6 +34,15 @@ export default class ClientResponse extends Readable {
 
   headers(value) {
     this._headers = value;
+    return this;
+  }
+
+  data(value = null) {
+    if (value === null) {
+      return this._data;
+    }
+
+    this._data = value;
     return this;
   }
 
