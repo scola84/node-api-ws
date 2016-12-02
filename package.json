@@ -9,7 +9,8 @@
   "jsnext:main": "index.js",
   "dependencies": {
     "@scola/api-http": "^3.0.0",
-    "@scola/error": "^4.1.0"
+    "@scola/error": "^4.1.0",
+    "qs": "^6.3.0"
   },
   "devDependencies": {
     "rollup": "^0.36.3",

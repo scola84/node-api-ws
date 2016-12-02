@@ -1,4 +1,4 @@
-import { stringify as formatQuery } from 'querystring';
+import formatQuery from 'qs/lib/stringify';
 import { ScolaError } from '@scola/error';
 import { EventEmitter } from 'events';
 
