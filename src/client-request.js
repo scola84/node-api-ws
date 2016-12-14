@@ -1,5 +1,5 @@
 import formatQuery from 'qs/lib/stringify';
-import { ScolaError } from '@scola/error';
+import { ScolaError } from '@scola/core';
 import { EventEmitter } from 'events';
 
 export default class ClientRequest extends EventEmitter {

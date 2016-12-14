@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { parse as parseUrl } from 'url';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
-import { ScolaError } from '@scola/error';
+import { ScolaError } from '@scola/core';
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';

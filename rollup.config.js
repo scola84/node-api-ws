@@ -6,6 +6,7 @@ export default {
   format: 'cjs',
   external: [
     '@scola/api-http',
+    '@scola/core',
     '@scola/error',
     'events',
     'qs/lib/stringify',
