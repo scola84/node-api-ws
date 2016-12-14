@@ -8,7 +8,7 @@ export default {
     '@scola/api-http',
     '@scola/error',
     'events',
-    'querystring',
+    'qs/lib/stringify',
     'stream',
     'url'
   ],
