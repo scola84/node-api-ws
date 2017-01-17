@@ -1,5 +1,5 @@
 import formatQuery from 'qs/lib/stringify';
-import { ScolaError } from '@scola/core';
+import { ScolaError } from '@scola/error';
 import { EventEmitter } from 'events';
 
 export default class ClientRequest extends EventEmitter {
@@ -13,8 +13,8 @@ export default class ClientRequest extends EventEmitter {
     this._headers = {};
   }
 
-  connection(value) {
-    if (typeof value === 'undefined') {
+  connection(value = null) {
+    if (value === null) {
       return this._connection;
     }
 
@@ -22,8 +22,8 @@ export default class ClientRequest extends EventEmitter {
     return this;
   }
 
-  method(value) {
-    if (typeof value === 'undefined') {
+  method(value = null) {
+    if (value === null) {
       return this._method;
     }
 
@@ -31,8 +31,8 @@ export default class ClientRequest extends EventEmitter {
     return this;
   }
 
-  path(value) {
-    if (typeof value === 'undefined') {
+  path(value = null) {
+    if (value === null) {
       return this._path;
     }
 
@@ -40,8 +40,8 @@ export default class ClientRequest extends EventEmitter {
     return this;
   }
 
-  query(value) {
-    if (typeof value === 'undefined') {
+  query(value = null) {
+    if (value === null) {
       return this._query;
     }
 
@@ -49,8 +49,8 @@ export default class ClientRequest extends EventEmitter {
     return this;
   }
 
-  header(name, value) {
-    if (typeof value === 'undefined') {
+  header(name, value = null) {
+    if (value === null) {
       return this._headers[name];
     }
 
@@ -64,8 +64,7 @@ export default class ClientRequest extends EventEmitter {
   }
 
   end(data, callback) {
-    const Encoder = this._connection.codec().Encoder;
-    const encoder = new Encoder();
+    const encoder = this._connection.codec().encoder();
     const socket = this._connection.socket();
 
     if (!socket) {

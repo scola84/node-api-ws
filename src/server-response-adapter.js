@@ -1,14 +1,22 @@
 import { EventEmitter } from 'events';
-import { ScolaError } from '@scola/core';
+import { ScolaError } from '@scola/error';
 
 export default class ServerResponseAdapter extends EventEmitter {
-  constructor(connection) {
+  constructor() {
     super();
 
-    this._connection = connection;
-
+    this._connection = null;
     this.statusCode = 200;
     this.headers = {};
+  }
+
+  connection(value) {
+    if (value === null) {
+      return this._connection;
+    }
+
+    this._connection = value;
+    return this;
   }
 
   getHeader(name) {
@@ -25,8 +33,7 @@ export default class ServerResponseAdapter extends EventEmitter {
   }
 
   end(data, callback) {
-    const Encoder = this._connection.codec().Encoder;
-    const encoder = new Encoder();
+    const encoder = this._connection.codec().encoder();
     const socket = this._connection.socket();
 
     if (!socket) {

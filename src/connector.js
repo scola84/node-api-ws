@@ -6,8 +6,8 @@ export default class WsConnector extends EventEmitter {
     super();
 
     this._server = null;
-    this._codec = null;
     this._router = null;
+    this._codec = null;
     this._header = null;
     this._ping = null;
 
@@ -23,41 +23,65 @@ export default class WsConnector extends EventEmitter {
     this._closeConnections(code, reason);
   }
 
-  server(value) {
+  server(value = null) {
+    if (value === null) {
+      return this._server;
+    }
+
     this._server = value;
     this._bindServer();
 
     return this;
   }
 
-  router(value) {
+  router(value = null) {
+    if (value === null) {
+      return this._router;
+    }
+
     this._router = value;
     return this;
   }
 
-  codec(value) {
+  codec(value = null) {
+    if (value === null) {
+      return this._codec;
+    }
+
     this._codec = value;
     return this;
   }
 
-  header(value) {
+  header(value = null) {
+    if (value === null) {
+      return this._header;
+    }
+
     this._header = value;
     return this;
   }
 
-  ping(value) {
+  ping(value = null) {
+    if (value === null) {
+      return this._ping;
+    }
+
     this._ping = value;
     return this;
   }
 
   _bindServer() {
-    this._server.addListener('connection', this._handleConnection);
-    this._server.addListener('error', this._handleError);
+    if (this._server) {
+      this._server.addListener('connection', this._handleConnection);
+      this._server.addListener('error', this._handleError);
+    }
   }
 
   _unbindServer() {
-    this._server.removeListener('connection', this._handleConnection);
-    this._server.removeListener('error', this._handleError);
+    if (this._server) {
+      this._server.removeListener('connection', this._handleConnection);
+      this._server.removeListener('error', this._handleError);
+    }
   }
 
   _closeConnections(code, reason) {

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { parse as parseUrl } from 'url';
 import { ServerRequest, ServerResponse } from '@scola/api-http';
-import { ScolaError } from '@scola/core';
+import { ScolaError } from '@scola/error';
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';
@@ -11,12 +11,10 @@ export default class WsConnection extends EventEmitter {
   constructor() {
     super();
 
-    this._codec = null;
     this._socket = null;
-    this._user = null;
-
     this._router = null;
-
+    this._codec = null;
+    this._user = null;
     this._auto = true;
     this._header = 'x-id';
 
@@ -49,17 +47,8 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  codec(value) {
-    if (typeof value === 'undefined') {
-      return this._codec;
-    }
-
-    this._codec = value;
-    return this;
-  }
-
-  socket(value) {
-    if (typeof value === 'undefined') {
+  socket(value = null) {
+    if (value === null) {
       return this._socket;
     }
 
@@ -77,17 +66,8 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  user(value) {
-    if (typeof value === 'undefined') {
-      return this._user;
-    }
-
-    this._user = value;
-    return this;
-  }
-
-  router(value) {
-    if (typeof value === 'undefined') {
+  router(value = null) {
+    if (value === null) {
       return this._router;
     }
 
@@ -95,8 +75,26 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  auto(value) {
-    if (typeof value === 'undefined') {
+  codec(value = null) {
+    if (value === null) {
+      return this._codec;
+    }
+
+    this._codec = value;
+    return this;
+  }
+
+  user(value = null) {
+    if (value === null) {
+      return this._user;
+    }
+
+    this._user = value;
+    return this;
+  }
+
+  auto(value = null) {
+    if (value === null) {
       return this._auto;
     }
 
@@ -104,8 +102,8 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  header(value) {
-    if (typeof value === 'undefined') {
+  header(value = null) {
+    if (value === null) {
       return this._header;
     }
 
@@ -146,8 +144,8 @@ export default class WsConnection extends EventEmitter {
     };
   }
 
-  request(value) {
-    if (typeof value === 'undefined') {
+  request(value = null) {
+    if (value === null) {
       return new ClientRequest()
         .connection(this);
     }
@@ -206,8 +204,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   _message(event) {
-    const Decoder = this._codec.Decoder;
-    const decoder = new Decoder();
+    const decoder = this._codec.decoder();
 
     decoder.once('error', (error) => {
       decoder.removeAllListeners();
@@ -242,11 +239,18 @@ export default class WsConnection extends EventEmitter {
   }
 
   _request(data) {
-    const requestAdapter = new ServerRequestAdapter(this, ...data);
-    const responseAdapter = new ServerResponseAdapter(this);
+    const requestAdapter = new ServerRequestAdapter(...data)
+      .connection(this);
 
-    const request = new ServerRequest(requestAdapter, this);
-    const response = new ServerResponse(responseAdapter);
+    const responseAdapter = new ServerResponseAdapter()
+      .connection(this);
+
+    const request = new ServerRequest()
+      .connection(this)
+      .request(requestAdapter);
+      
+    const response = new ServerResponse()
+      .response(responseAdapter);
 
     if (request.header(this._header)) {
       response.header(this._header, request.header(this._header));
