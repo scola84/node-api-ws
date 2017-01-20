@@ -1,16 +1,28 @@
+import { Writable } from 'stream';
 import formatQuery from 'qs/lib/stringify';
-import { ScolaError } from '@scola/error';
-import { EventEmitter } from 'events';
+import { Writer } from '@scola/api-http';
+import ClientResponse from './client-response';
 
-export default class ClientRequest extends EventEmitter {
+export default class ClientRequest extends Writable {
   constructor() {
-    super();
+    super({
+      objectMode: true
+    });
 
     this._connection = null;
+    this._response = null;
+    this._writer = null;
+    this._encoder = null;
+
     this._method = 'GET';
     this._path = '/';
     this._query = {};
     this._headers = {};
+
+    this.once('finish', () => {
+      this._write(null);
+      this._writer.end();
+    });
   }
 
   connection(value = null) {
@@ -63,46 +75,50 @@ export default class ClientRequest extends EventEmitter {
     return this;
   }
 
-  end(data, callback) {
-    const encoder = this._connection.codec().encoder();
-    const socket = this._connection.socket();
+  handleResponse(status, headers, body) {
+    if (!this._response) {
+      this._response = new ClientResponse()
+        .connection(this)
+        .status(status)
+        .headers(headers);
 
-    if (!socket) {
-      this.emit('error', new ScolaError('500 invalid_socket'));
-      return this;
+      this.emit('response', this._response);
     }
 
-    encoder.once('error', (error) => {
-      encoder.removeAllListeners();
-      this.emit('error', error);
-    });
-
-    encoder.once('data', (encodedData) => {
-      encoder.removeAllListeners();
-
-      if (socket.readyState !== socket.OPEN) {
-        this.emit('error', new ScolaError('500 invalid_socket'));
-        return;
-      }
-
-      socket.send(encodedData);
-    });
-
-    if (callback) {
-      this._callback = callback;
-      this._connection.request(this);
+    if (body !== null) {
+      this._response.write(body);
+      return;
     }
 
-    encoder.end([this._mpq(), this._headers, data]);
-    return this;
+    this._response.end();
   }
 
-  handleResponse(response) {
-    this._callback(response);
+  _write(data, encoding, callback) {
+    data = [this._mpq(), this._headers, data];
+    this._instance().write(data, encoding, callback);
   }
 
   _mpq() {
     const query = formatQuery(this._query);
     return this._method + ' ' + this._path + (query ? '?' + query : '');
+  }
+
+  _instance() {
+    if (this._writer) {
+      return this._writer;
+    }
+
+    this._writer = new Writer();
+    this._encoder = this._connection.encoder(this._writer);
+
+    this._encoder.on('data', (data) => {
+      this._connection.send(data, (error) => {
+        if (error) {
+          this.emit('error', error);
+        }
+      });
+    });
+
+    return this._writer;
   }
 }

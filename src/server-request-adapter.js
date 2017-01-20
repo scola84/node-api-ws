@@ -1,6 +1,6 @@
-import { Readable } from 'stream';
+import { Duplex } from 'stream';
 
-export default class ServerRequestAdapter extends Readable {
+export default class ServerRequestAdapter extends Duplex {
   constructor(mpq, headers, body) {
     super({
       objectMode: true
@@ -18,16 +18,20 @@ export default class ServerRequestAdapter extends Readable {
     const socket = value.socket();
 
     if (socket.upgradeReq) {
-      this._headers = Object.assign({}, socket.upgradeReq.headers,
+      this._headers = Object.assign({},
+        socket.upgradeReq.headers,
         this._headers);
+
       delete this._headers.accept;
     }
 
     return this;
   }
 
-  _read() {
-    this.push(this.body);
-    this.body = null;
+  _read() {}
+
+  _write(data, encoding, callback) {
+    this.push(data);
+    callback();
   }
 }

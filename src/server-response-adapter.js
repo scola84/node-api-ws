@@ -1,13 +1,23 @@
-import { EventEmitter } from 'events';
-import { ScolaError } from '@scola/error';
+import { Writable } from 'stream';
+import { Writer } from '@scola/api-http';
 
-export default class ServerResponseAdapter extends EventEmitter {
+export default class ServerResponseAdapter extends Writable {
   constructor() {
-    super();
+    super({
+      objectMode: true
+    });
 
     this._connection = null;
+    this._writer = null;
+    this._encoder = null;
+
     this.statusCode = 200;
     this.headers = {};
+
+    this.once('finish', () => {
+      this._write(null);
+      this._writer.end();
+    });
   }
 
   connection(value) {
@@ -32,31 +42,27 @@ export default class ServerResponseAdapter extends EventEmitter {
     delete this.headers[name.toLowerCase()];
   }
 
-  end(data, callback) {
-    const encoder = this._connection.codec().encoder();
-    const socket = this._connection.socket();
+  _write(data, encoding, callback) {
+    data = [this.statusCode, this.headers, data];
+    this._instance().write(data, encoding, callback);
+  }
 
-    if (!socket) {
-      this.emit('error', new ScolaError('500 invalid_socket'));
-      return;
+  _instance() {
+    if (this._writer) {
+      return this._writer;
     }
 
-    encoder.once('error', (error) => {
-      encoder.removeAllListeners();
-      this.emit('error', error);
+    this._writer = new Writer();
+    this._encoder = this._connection.encoder(this._writer);
+
+    this._encoder.on('data', (data) => {
+      this._connection.send(data, (error) => {
+        if (error) {
+          this.emit('error', error);
+        }
+      });
     });
 
-    encoder.once('data', (encodedData) => {
-      encoder.removeAllListeners();
-
-      if (socket.readyState !== socket.OPEN) {
-        this.emit('error', new ScolaError('500 invalid_socket'));
-        return;
-      }
-
-      socket.send(encodedData, callback);
-    });
-
-    encoder.end([this.statusCode, this.headers, data]);
+    return this._writer;
   }
 }

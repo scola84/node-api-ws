@@ -1,9 +1,14 @@
 import { EventEmitter } from 'events';
 import { parse as parseUrl } from 'url';
-import { ServerRequest, ServerResponse } from '@scola/api-http';
+
+import {
+  ServerRequest,
+  ServerResponse,
+  Writer
+} from '@scola/api-http';
+
 import { ScolaError } from '@scola/error';
 import ClientRequest from './client-request';
-import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';
 import ServerResponseAdapter from './server-response-adapter';
 
@@ -19,7 +24,10 @@ export default class WsConnection extends EventEmitter {
     this._header = 'x-id';
 
     this._id = 0;
-    this._requests = {};
+
+    this._incoming = {};
+    this._outgoing = {};
+
     this._interval = null;
 
     this._handleClose = (e) => this._close(e);
@@ -120,6 +128,33 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  request() {
+    const request = this._createOutgoing();
+
+    this._id += 1;
+    this._outgoing[this._id] = request;
+    request.header(this._header, this._id);
+
+    return request;
+  }
+
+  send(data, callback) {
+    if (this._socket.readyState !== this._socket.OPEN) {
+      callback(new ScolaError('500 invalid_socket'));
+      return;
+    }
+
+    this._socket.send(data, callback);
+  }
+
+  decoder(writer) {
+    return this._codec && this._codec.decoder(writer, this) || writer;
+  }
+
+  encoder(writer) {
+    return this._codec && this._codec.encoder(writer, this) || writer;
+  }
+
   address() {
     let address = null;
     let port = null;
@@ -142,19 +177,6 @@ export default class WsConnection extends EventEmitter {
       address,
       port
     };
-  }
-
-  request(value = null) {
-    if (value === null) {
-      return new ClientRequest()
-        .connection(this);
-    }
-
-    this._id += 1;
-    this._requests[this._id] = value;
-    this._requests[this._id].header(this._header, this._id);
-
-    return this;
   }
 
   _bindSocket() {
@@ -204,30 +226,23 @@ export default class WsConnection extends EventEmitter {
   }
 
   _message(event) {
-    const decoder = this._codec.decoder();
-
-    decoder.once('error', (error) => {
-      decoder.removeAllListeners();
-      this.close(1003);
-      this.emit('error', error);
-    });
+    const writer = new Writer();
+    const decoder = this.decoder(writer);
 
     decoder.once('data', (data) => {
-      decoder.removeAllListeners();
-
       this._checkProtocol(data, (error) => {
         this._handleCheck(error, data);
       });
     });
 
-    decoder.end(event.data);
+    writer.end(event.data);
   }
 
   _handleCheck(error, data) {
     if (error) {
       this.close(1002);
-      this.emit('error', new ScolaError('400 invalid_protocol ' +
-        error.message));
+      this.emit('error',
+        new ScolaError('400 invalid_protocol ' + error.message));
       return;
     }
 
@@ -238,8 +253,39 @@ export default class WsConnection extends EventEmitter {
     }
   }
 
-  _request(data) {
-    const requestAdapter = new ServerRequestAdapter(...data)
+  _request([mpq, headers, body]) {
+    const id = Number(headers[this._header]);
+
+    if (!this._incoming[id]) {
+      const [request, response] = this._createIncoming(mpq, headers, body);
+      this._incoming[id] = request;
+
+      response.header(this._header, id);
+      this._router.handleRequest(request, response);
+    }
+
+    if (body !== null) {
+      this._incoming[id].request().write(body);
+      return;
+    }
+
+    this._incoming[id].end();
+    delete this._incoming[id];
+  }
+
+  _response([status, headers, body]) {
+    const id = Number(headers[this._header]);
+    const request = this._outgoing[id];
+
+    if (body === null) {
+      delete this._outgoing[id];
+    }
+
+    request.handleResponse(status, headers, body);
+  }
+
+  _createIncoming(mpq, headers, body) {
+    const requestAdapter = new ServerRequestAdapter(mpq, headers, body)
       .connection(this);
 
     const responseAdapter = new ServerResponseAdapter()
@@ -248,42 +294,16 @@ export default class WsConnection extends EventEmitter {
     const request = new ServerRequest()
       .connection(this)
       .request(requestAdapter);
-      
+
     const response = new ServerResponse()
+      .connection(this)
       .response(responseAdapter);
 
-    if (request.header(this._header)) {
-      response.header(this._header, request.header(this._header));
-    }
-
-    this._router.handleRequest(request, response);
-
-    this.emit('request', {
-      connection: this,
-      request
-    });
+    return [request, response];
   }
 
-  _response([status, headers, body]) {
-    const response = new ClientResponse()
-      .connection(this)
-      .status(status)
-      .headers(headers)
-      .body(body);
-
-    if (response.header(this._header)) {
-      const id = Number(response.header(this._header));
-
-      if (this._requests[id]) {
-        this._requests[id].handleResponse(response);
-        delete this._requests[id];
-      }
-    }
-
-    this.emit('response', {
-      connection: this,
-      response
-    });
+  _createOutgoing() {
+    return new ClientRequest().connection(this);
   }
 
   _checkProtocol(data, callback) {

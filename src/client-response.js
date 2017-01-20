@@ -1,7 +1,7 @@
-import { Readable } from 'stream';
+import { Duplex } from 'stream';
 import { parseHeader } from '@scola/api-http';
 
-export default class ClientResponse extends Readable {
+export default class ClientResponse extends Duplex {
   constructor() {
     super({
       objectMode: true
@@ -10,7 +10,6 @@ export default class ClientResponse extends Readable {
     this._connection = null;
     this._status = null;
     this._headers = {};
-    this._body = null;
     this._data = null;
   }
 
@@ -42,17 +41,10 @@ export default class ClientResponse extends Readable {
   }
 
   header(name, parse = false) {
-    const header = this._headers[name] || this._headers[name.toLowerCase()];
+    const header = this._headers[name] ||
+      this._headers[name.toLowerCase()];
+
     return header && parse ? parseHeader(header) : header;
-  }
-
-  body(value = null) {
-    if (value === null) {
-      return this._body;
-    }
-
-    this._body = value;
-    return this;
   }
 
   data(value = null) {
@@ -64,8 +56,10 @@ export default class ClientResponse extends Readable {
     return this;
   }
 
-  _read() {
-    this.push(this._body);
-    this._body = null;
+  _write(data, encoding, callback) {
+    this.push(data);
+    callback();
   }
+
+  _read() {}
 }
