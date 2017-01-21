@@ -11,6 +11,16 @@ export default class ClientResponse extends Duplex {
     this._status = null;
     this._headers = {};
     this._data = null;
+
+    this.once('finish', () => {
+      this.push(null);
+    });
+  }
+
+  destroy(error) {
+    if (error) {
+      this.emit('error', error);
+    }
   }
 
   connection(value = null) {
@@ -56,10 +66,10 @@ export default class ClientResponse extends Duplex {
     return this;
   }
 
+  _read() {}
+
   _write(data, encoding, callback) {
     this.push(data);
     callback();
   }
-
-  _read() {}
 }

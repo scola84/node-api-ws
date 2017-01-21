@@ -37,8 +37,6 @@ export default class WsConnection extends EventEmitter {
 
   open(event) {
     this.socket(event.socket);
-    this._open(event);
-
     return this;
   }
 
@@ -101,6 +99,15 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  upgrade(value = null) {
+    if (value === null) {
+      return this._socket.upgradeReq;
+    }
+
+    this._socket.upgradeReq = value;
+    return this;
+  }
+
   auto(value = null) {
     if (value === null) {
       return this._auto;
@@ -138,13 +145,12 @@ export default class WsConnection extends EventEmitter {
     return request;
   }
 
-  send(data, callback) {
+  send(data) {
     if (this._socket.readyState !== this._socket.OPEN) {
-      callback(new ScolaError('500 invalid_socket'));
       return;
     }
 
-    this._socket.send(data, callback);
+    this._socket.send(data);
   }
 
   decoder(writer) {
@@ -186,18 +192,25 @@ export default class WsConnection extends EventEmitter {
   }
 
   _unbindSocket() {
-    if (this._socket.removeEventListener) {
-      this._socket.removeEventListener('close', this._handleClose);
-      this._socket.removeEventListener('error', this._handleError);
-      this._socket.removeEventListener('message', this._handleMessage);
-    } else {
-      this._socket.removeListener('close', this._handleClose);
-      this._socket.removeListener('error', this._handleError);
-      this._socket.removeListener('message', this._handleMessage);
-    }
+    this._socket.removeEventListener('close', this._handleClose);
+    this._socket.removeEventListener('error', this._handleError);
+    this._socket.removeEventListener('message', this._handleMessage);
   }
 
   _close(event, force = false) {
+    const error = new ScolaError('500 invalid_socket');
+
+    Object.keys(this._outgoing).forEach((id) => {
+      this._outgoing[id].destroy(error);
+      delete this._outgoing[id];
+    });
+
+    Object.keys(this._incoming).forEach((id) => {
+      this._incoming[id].request.destroy(error);
+      this._incoming[id].response.destroy(error);
+      delete this._incoming[id];
+    });
+
     if (this._auto === false && force === false) {
       return;
     }
@@ -255,22 +268,23 @@ export default class WsConnection extends EventEmitter {
 
   _request([mpq, headers, body]) {
     const id = Number(headers[this._header]);
+    let { request, response } = this._incoming[id] || {};
 
-    if (!this._incoming[id]) {
-      const [request, response] = this._createIncoming(mpq, headers, body);
-      this._incoming[id] = request;
+    if (!request) {
+      [request, response] = this._createIncoming(mpq, headers);
+      this._incoming[id] = { request, response };
 
       response.header(this._header, id);
       this._router.handleRequest(request, response);
     }
 
-    if (body !== null) {
-      this._incoming[id].request().write(body);
+    if (body === null) {
+      request.request().end();
+      delete this._incoming[id];
       return;
     }
 
-    this._incoming[id].end();
-    delete this._incoming[id];
+    request.request().write(body);
   }
 
   _response([status, headers, body]) {
@@ -281,11 +295,13 @@ export default class WsConnection extends EventEmitter {
       delete this._outgoing[id];
     }
 
-    request.handleResponse(status, headers, body);
+    if (request) {
+      request.handleResponse(status, headers, body);
+    }
   }
 
-  _createIncoming(mpq, headers, body) {
-    const requestAdapter = new ServerRequestAdapter(mpq, headers, body)
+  _createIncoming(mpq, headers) {
+    const requestAdapter = new ServerRequestAdapter(mpq, headers)
       .connection(this);
 
     const responseAdapter = new ServerResponseAdapter()
@@ -303,7 +319,8 @@ export default class WsConnection extends EventEmitter {
   }
 
   _createOutgoing() {
-    return new ClientRequest().connection(this);
+    return new ClientRequest()
+      .connection(this);
   }
 
   _checkProtocol(data, callback) {

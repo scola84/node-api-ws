@@ -104,6 +104,10 @@ export default class WsConnector extends EventEmitter {
   }
 
   _connection(socket) {
+    if (!socket.removeEventListener) {
+      socket.removeEventListener = socket.removeListener;
+    }
+
     const connection = new WsConnection()
       .socket(socket)
       .router(this._router)

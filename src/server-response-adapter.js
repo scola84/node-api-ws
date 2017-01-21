@@ -56,11 +56,7 @@ export default class ServerResponseAdapter extends Writable {
     this._encoder = this._connection.encoder(this._writer);
 
     this._encoder.on('data', (data) => {
-      this._connection.send(data, (error) => {
-        if (error) {
-          this.emit('error', error);
-        }
-      });
+      this._connection.send(data);
     });
 
     return this._writer;

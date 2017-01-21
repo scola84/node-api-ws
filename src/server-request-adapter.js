@@ -1,7 +1,7 @@
 import { Duplex } from 'stream';
 
 export default class ServerRequestAdapter extends Duplex {
-  constructor(mpq, headers, body) {
+  constructor(mpq, headers) {
     super({
       objectMode: true
     });
@@ -11,17 +11,17 @@ export default class ServerRequestAdapter extends Duplex {
     this.method = method;
     this.url = url;
     this.headers = headers;
-    this.body = body;
+
+    this.once('finish', () => {
+      this.push(null);
+    });
   }
 
   connection(value) {
-    const socket = value.socket();
+    const request = value.upgrade();
 
-    if (socket.upgradeReq) {
-      this._headers = Object.assign({},
-        socket.upgradeReq.headers,
-        this._headers);
-
+    if (request) {
+      this._headers = Object.assign({}, request.headers, this._headers);
       delete this._headers.accept;
     }
 

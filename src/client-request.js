@@ -25,6 +25,21 @@ export default class ClientRequest extends Writable {
     });
   }
 
+  destroy(error) {
+    if (this._writer) {
+      this._encoder.removeAllListeners();
+      this._writer.end();
+    }
+
+    if (this._response) {
+      this._response.destroy(error);
+    }
+
+    if (error) {
+      this.emit('error', error);
+    }
+  }
+
   connection(value = null) {
     if (value === null) {
       return this._connection;
@@ -85,12 +100,12 @@ export default class ClientRequest extends Writable {
       this.emit('response', this._response);
     }
 
-    if (body !== null) {
-      this._response.write(body);
+    if (body === null) {
+      this._response.end();
       return;
     }
 
-    this._response.end();
+    this._response.write(body);
   }
 
   _write(data, encoding, callback) {
@@ -112,11 +127,7 @@ export default class ClientRequest extends Writable {
     this._encoder = this._connection.encoder(this._writer);
 
     this._encoder.on('data', (data) => {
-      this._connection.send(data, (error) => {
-        if (error) {
-          this.emit('error', error);
-        }
-      });
+      this._connection.send(data);
     });
 
     return this._writer;
