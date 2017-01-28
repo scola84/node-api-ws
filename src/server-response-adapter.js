@@ -14,9 +14,13 @@ export default class ServerResponseAdapter extends Writable {
     this.statusCode = 200;
     this.headers = {};
 
+    this._writeOnEnd = false;
+
     this.once('finish', () => {
-      this._write(null);
-      this._writer.end();
+      if (this._writeOnEnd === true) {
+        this._write(null);
+        this._writer.end();
+      }
     });
   }
 
@@ -42,8 +46,25 @@ export default class ServerResponseAdapter extends Writable {
     delete this.headers[name.toLowerCase()];
   }
 
+  end(data, encoding, callback) {
+    if (this.headers['x-more']) {
+      this.headers['x-more'] = 0;
+    }
+
+    super.end(data, encoding, callback);
+  }
+
+  write(data, encoding, callback) {
+    if (this._writeOnEnd === false) {
+      this.headers['x-more'] = 1;
+    }
+
+    this._writeOnEnd = false;
+    super.write(data, encoding, callback);
+  }
+
   _write(data, encoding, callback) {
-    data = [this.statusCode, this.headers, data];
+    data = [this.statusCode, Object.assign({}, this.headers), data];
     this._instance().write(data, encoding, callback);
   }
 

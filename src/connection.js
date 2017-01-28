@@ -268,6 +268,8 @@ export default class WsConnection extends EventEmitter {
 
   _request([mpq, headers, body]) {
     const id = Number(headers[this._header]);
+    const more = Boolean(headers['x-more']);
+
     let { request, response } = this._incoming[id] || {};
 
     if (!request) {
@@ -278,20 +280,23 @@ export default class WsConnection extends EventEmitter {
       this._router.handleRequest(request, response);
     }
 
-    if (body === null) {
-      request.request().end();
-      delete this._incoming[id];
-      return;
+    if (body !== null) {
+      request.request().write(body);
     }
 
-    request.request().write(body);
+    if (more === false) {
+      request.request().end();
+      delete this._incoming[id];
+    }
   }
 
   _response([status, headers, body]) {
     const id = Number(headers[this._header]);
+    const more = Boolean(headers['x-more']);
+
     const request = this._outgoing[id];
 
-    if (body === null) {
+    if (more === false) {
       delete this._outgoing[id];
     }
 

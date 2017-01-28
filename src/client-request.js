@@ -19,9 +19,13 @@ export default class ClientRequest extends Writable {
     this._query = {};
     this._headers = {};
 
+    this._writeOnEnd = false;
+
     this.once('finish', () => {
-      this._write(null);
-      this._writer.end();
+      if (this._writeOnEnd === true) {
+        this._write(null);
+        this._writer.end();
+      }
     });
   }
 
@@ -91,6 +95,8 @@ export default class ClientRequest extends Writable {
   }
 
   handleResponse(status, headers, body) {
+    const more = Boolean(headers['x-more']);
+
     if (!this._response) {
       this._response = new ClientResponse()
         .connection(this)
@@ -100,16 +106,36 @@ export default class ClientRequest extends Writable {
       this.emit('response', this._response);
     }
 
-    if (body === null) {
-      this._response.end();
-      return;
+    if (body !== null) {
+      this._response.write(body);
     }
 
-    this._response.write(body);
+    if (more === false) {
+      this._response.end();
+    }
+  }
+
+  end(data, encoding, callback) {
+    this._writeOnEnd = true;
+
+    if (this._headers['x-more']) {
+      this._headers['x-more'] = 0;
+    }
+
+    super.end(data, encoding, callback);
+  }
+
+  write(data, encoding, callback) {
+    if (this._writeOnEnd === false) {
+      this._headers['x-more'] = 1;
+    }
+
+    this._writeOnEnd = false;
+    super.write(data, encoding, callback);
   }
 
   _write(data, encoding, callback) {
-    data = [this._mpq(), this._headers, data];
+    data = [this._mpq(), Object.assign({}, this._headers), data];
     this._instance().write(data, encoding, callback);
   }
 
