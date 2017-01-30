@@ -131,7 +131,7 @@ export default class WsConnection extends EventEmitter {
       clearInterval(this._interval);
     }
 
-    this._interval = setInterval(() => this._socket.ping(), duration);
+    this._interval = setInterval(() => this._ping(), duration);
     return this;
   }
 
@@ -348,5 +348,11 @@ export default class WsConnection extends EventEmitter {
     }
 
     callback(null, data);
+  }
+
+  _ping() {
+    if (this._socket.readyState === this._socket.OPEN) {
+      this._socket.ping();
+    }
   }
 }
