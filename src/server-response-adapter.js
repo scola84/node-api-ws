@@ -14,17 +14,31 @@ export default class ServerResponseAdapter extends Writable {
     this.statusCode = 200;
     this.headers = {};
 
-    this._writeOnEnd = false;
+    this._writes = 0;
+    this._ended = false;
 
-    this.once('finish', () => {
-      if (this._writeOnEnd === true) {
-        this._write(null);
-        this._writer.end();
-      }
-    });
+    this._handleData = (d) => this._data(d);
+    this._handleFinish = () => this._finish();
+
+    this._bind();
   }
 
-  connection(value) {
+  destroy() {
+    if (this._writer) {
+      this._writer.end();
+    }
+
+    this._unbind();
+    this._unbindEncoder();
+
+    this.end();
+
+    this._connection = null;
+    this._writer = null;
+    this._encoder = null;
+  }
+
+  connection(value = null) {
     if (value === null) {
       return this._connection;
     }
@@ -46,26 +60,50 @@ export default class ServerResponseAdapter extends Writable {
     delete this.headers[name.toLowerCase()];
   }
 
-  end(data, encoding, callback) {
-    if (this.headers['x-more']) {
-      this.headers['x-more'] = 0;
-    }
-
-    super.end(data, encoding, callback);
+  _bind() {
+    this.once('finish', this._handleFinish);
   }
 
-  write(data, encoding, callback) {
-    if (this._writeOnEnd === false) {
-      this.headers['x-more'] = 1;
-    }
+  _unbind() {
+    this.removeListener('finish', this._handleFinish);
+  }
 
-    this._writeOnEnd = false;
-    super.write(data, encoding, callback);
+  _bindEncoder() {
+    if (this._encoder) {
+      this._encoder.on('data', this._handleData);
+    }
+  }
+
+  _unbindEncoder() {
+    if (this._encoder) {
+      this._encoder.removeListener('data', this._handleData);
+    }
   }
 
   _write(data, encoding, callback) {
+    if (this._ended === false || this._writes > 1) {
+      this.headers['x-more'] = 1;
+    } else if (this.headers['x-more'] === 1) {
+      this.headers['x-more'] = 0;
+    }
+
+    this._writes -= 1;
+
     data = [this.statusCode, Object.assign({}, this.headers), data];
     this._instance().write(data, encoding, callback);
+  }
+
+  _finish() {
+    const more = Boolean(this.headers['x-more']);
+
+    if (this._writer && more === false) {
+      this.destroy();
+      return;
+    }
+
+    this._write(null, null, () => {
+      this.destroy();
+    });
   }
 
   _instance() {
@@ -76,10 +114,11 @@ export default class ServerResponseAdapter extends Writable {
     this._writer = new Writer();
     this._encoder = this._connection.encoder(this._writer);
 
-    this._encoder.on('data', (data) => {
-      this._connection.send(data);
-    });
-
+    this._bindEncoder();
     return this._writer;
+  }
+
+  _data(data) {
+    this._connection.send(data);
   }
 }

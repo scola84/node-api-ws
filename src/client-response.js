@@ -1,26 +1,29 @@
-import { Duplex } from 'stream';
+import { PassThrough } from 'stream';
 import { parseHeader } from '@scola/api-http';
 
-export default class ClientResponse extends Duplex {
+export default class ClientResponse extends PassThrough {
   constructor() {
     super({
       objectMode: true
     });
 
     this._connection = null;
+    this._request = null;
+
     this._status = null;
     this._headers = {};
     this._data = null;
-
-    this.once('finish', () => {
-      this.push(null);
-    });
   }
 
-  destroy(error) {
-    if (error) {
-      this.emit('error', error);
+  destroy(abort = false) {
+    if (abort === true) {
+      this.emit('abort');
     }
+
+    this.end();
+
+    this._connection = null;
+    this._request = null;
   }
 
   connection(value = null) {
@@ -32,9 +35,22 @@ export default class ClientResponse extends Duplex {
     return this;
   }
 
+  request(value = null) {
+    if (value === null) {
+      return this._request;
+    }
+
+    this._request = value;
+    return this;
+  }
+
   status(value = null) {
     if (value === null) {
       return this._status;
+    }
+
+    if (!this._status) {
+      this._request.emit('response', this);
     }
 
     this._status = value;
@@ -64,12 +80,5 @@ export default class ClientResponse extends Duplex {
 
     this._data = value;
     return this;
-  }
-
-  _read() {}
-
-  _write(data, encoding, callback) {
-    this.push(data);
-    callback();
   }
 }

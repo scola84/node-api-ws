@@ -8,7 +8,6 @@ export default class WsConnector extends EventEmitter {
     this._server = null;
     this._router = null;
     this._codec = null;
-    this._header = null;
     this._ping = null;
 
     this._connections = new Set();
@@ -49,15 +48,6 @@ export default class WsConnector extends EventEmitter {
     }
 
     this._codec = value;
-    return this;
-  }
-
-  header(value = null) {
-    if (value === null) {
-      return this._header;
-    }
-
-    this._header = value;
     return this;
   }
 
@@ -112,10 +102,6 @@ export default class WsConnector extends EventEmitter {
       .socket(socket)
       .router(this._router)
       .codec(this._codec);
-
-    if (this._header) {
-      connection.header(this._header);
-    }
 
     if (this._ping) {
       connection.ping(this._ping);

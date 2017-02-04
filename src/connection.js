@@ -9,6 +9,7 @@ import {
 
 import { ScolaError } from '@scola/error';
 import ClientRequest from './client-request';
+import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';
 import ServerResponseAdapter from './server-response-adapter';
 
@@ -21,12 +22,13 @@ export default class WsConnection extends EventEmitter {
     this._codec = null;
     this._user = null;
     this._auto = true;
-    this._header = 'x-id';
 
     this._id = 0;
 
-    this._incoming = {};
-    this._outgoing = {};
+    this._inreq = {};
+    this._inres = {};
+    this._outreq = {};
+    this._outres = {};
 
     this._interval = null;
 
@@ -117,31 +119,20 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  header(value = null) {
-    if (value === null) {
-      return this._header;
-    }
-
-    this._header = value;
-    return this;
-  }
-
   ping(duration) {
     if (this._interval) {
       clearInterval(this._interval);
     }
 
-    this._interval = setInterval(() => this._ping(), duration);
+    this._interval = setInterval(() => {
+      this._ping();
+    }, duration);
+
     return this;
   }
 
   request() {
-    const request = this._createOutgoing();
-
-    this._id += 1;
-    this._outgoing[this._id] = request;
-    request.header(this._header, this._id);
-
+    const [request] = this._outgoing();
     return request;
   }
 
@@ -198,17 +189,20 @@ export default class WsConnection extends EventEmitter {
   }
 
   _close(event, force = false) {
-    const error = new ScolaError('500 invalid_socket');
-
-    Object.keys(this._outgoing).forEach((id) => {
-      this._outgoing[id].destroy(error);
-      delete this._outgoing[id];
+    Object.keys(this._inreq).forEach((id) => {
+      this._inreq[id].destroy(true);
     });
 
-    Object.keys(this._incoming).forEach((id) => {
-      this._incoming[id].request.destroy(error);
-      this._incoming[id].response.destroy(error);
-      delete this._incoming[id];
+    Object.keys(this._inres).forEach((id) => {
+      this._inres[id].destroy(true);
+    });
+
+    Object.keys(this._outreq).forEach((id) => {
+      this._outreq[id].destroy(true);
+    });
+
+    Object.keys(this._outres).forEach((id) => {
+      this._outres[id].destroy(true);
     });
 
     if (this._auto === false && force === false) {
@@ -251,83 +245,6 @@ export default class WsConnection extends EventEmitter {
     writer.end(event.data);
   }
 
-  _handleCheck(error, data) {
-    if (error) {
-      this.close(1002);
-      this.emit('error',
-        new ScolaError('400 invalid_protocol ' + error.message));
-      return;
-    }
-
-    if (typeof data[0] === 'string') {
-      this._request(data);
-    } else {
-      this._response(data);
-    }
-  }
-
-  _request([mpq, headers, body]) {
-    const id = Number(headers[this._header]);
-    const more = Boolean(headers['x-more']);
-
-    let { request, response } = this._incoming[id] || {};
-
-    if (!request) {
-      [request, response] = this._createIncoming(mpq, headers);
-      this._incoming[id] = { request, response };
-
-      response.header(this._header, id);
-      this._router.handleRequest(request, response);
-    }
-
-    if (body !== null) {
-      request.request().write(body);
-    }
-
-    if (more === false) {
-      request.request().end();
-      delete this._incoming[id];
-    }
-  }
-
-  _response([status, headers, body]) {
-    const id = Number(headers[this._header]);
-    const more = Boolean(headers['x-more']);
-
-    const request = this._outgoing[id];
-
-    if (more === false) {
-      delete this._outgoing[id];
-    }
-
-    if (request) {
-      request.handleResponse(status, headers, body);
-    }
-  }
-
-  _createIncoming(mpq, headers) {
-    const requestAdapter = new ServerRequestAdapter(mpq, headers)
-      .connection(this);
-
-    const responseAdapter = new ServerResponseAdapter()
-      .connection(this);
-
-    const request = new ServerRequest()
-      .connection(this)
-      .request(requestAdapter);
-
-    const response = new ServerResponse()
-      .connection(this)
-      .response(responseAdapter);
-
-    return [request, response];
-  }
-
-  _createOutgoing() {
-    return new ClientRequest()
-      .connection(this);
-  }
-
   _checkProtocol(data, callback) {
     if (!Array.isArray(data) || data.length !== 3) {
       callback(new Error('Message has an invalid structure'));
@@ -348,6 +265,119 @@ export default class WsConnection extends EventEmitter {
     }
 
     callback(null, data);
+  }
+
+  _handleCheck(error, data) {
+    if (error) {
+      this.close(1002);
+      this.emit('error',
+        new ScolaError('400 invalid_protocol ' + error.message));
+      return;
+    }
+
+    if (typeof data[0] === 'string') {
+      this._request(data);
+    } else {
+      this._response(data);
+    }
+  }
+
+  _request([mpq, headers, body]) {
+    const id = Number(headers['x-id']);
+    const more = Boolean(headers['x-more']);
+
+    let request = this._inreq[id];
+    let response = null;
+
+    if (!request) {
+      [request, response] = this._incoming(mpq, headers);
+      this._router.handleRequest(request, response);
+    }
+
+    if (body !== null) {
+      request.request().write(body);
+    }
+
+    if (more === false) {
+      request.destroy();
+    }
+  }
+
+  _response([status, headers, body]) {
+    const id = Number(headers['x-id']);
+    const more = Boolean(headers['x-more']);
+
+    const response = this._outres[id];
+
+    response
+      .status(status)
+      .headers(headers);
+
+    if (body !== null) {
+      response.write(body);
+    }
+
+    if (more === false) {
+      response.destroy();
+    }
+  }
+
+  _incoming(mpq, headers) {
+    const id = headers['x-id'];
+
+    const requestAdapter = new ServerRequestAdapter(mpq, headers)
+      .connection(this);
+
+    const responseAdapter = new ServerResponseAdapter()
+      .connection(this);
+
+    const request = new ServerRequest()
+      .connection(this)
+      .request(requestAdapter);
+
+    const response = new ServerResponse()
+      .connection(this)
+      .response(responseAdapter);
+
+    response.header('x-id', id);
+
+    this._inreq[id] = request;
+    this._inres[id] = response;
+
+    request.once('end', () => {
+      delete this._inreq[id];
+    });
+
+    response.once('finish', () => {
+      delete this._inres[id];
+    });
+
+    return [request, response];
+  }
+
+  _outgoing() {
+    const id = ++this._id;
+
+    const request = new ClientRequest()
+      .connection(this)
+      .header('x-id', id);
+
+    const response = new ClientResponse()
+      .connection(this)
+      .request(request);
+
+    this._outreq[id] = request;
+    this._outres[id] = response;
+
+    request.once('finish', () => {
+      delete this._outreq[id];
+    });
+
+    response.once('end', () => {
+      delete this._outres[id];
+    });
+
+    return [request, response];
   }
 
   _ping() {

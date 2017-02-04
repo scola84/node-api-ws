@@ -1,7 +1,6 @@
 import { Writable } from 'stream';
 import formatQuery from 'qs/lib/stringify';
 import { Writer } from '@scola/api-http';
-import ClientResponse from './client-response';
 
 export default class ClientRequest extends Writable {
   constructor() {
@@ -19,29 +18,32 @@ export default class ClientRequest extends Writable {
     this._query = {};
     this._headers = {};
 
-    this._writeOnEnd = false;
+    this._ended = false;
 
-    this.once('finish', () => {
-      if (this._writeOnEnd === true) {
-        this._write(null);
-        this._writer.end();
-      }
-    });
+    this._handleData = (d) => this._data(d);
+    this._handleFinish = () => this._finish();
+
+    this._bind();
   }
 
-  destroy(error) {
+  destroy(abort = false) {
     if (this._writer) {
-      this._encoder.removeAllListeners();
       this._writer.end();
     }
 
-    if (this._response) {
-      this._response.destroy(error);
+    this._unbind();
+    this._unbindEncoder();
+
+    if (abort === true) {
+      this.emit('abort');
     }
 
-    if (error) {
-      this.emit('error', error);
-    }
+    this.end();
+
+    this._connection = null;
+    this._response = null;
+    this._writer = null;
+    this._encoder = null;
   }
 
   connection(value = null) {
@@ -94,49 +96,68 @@ export default class ClientRequest extends Writable {
     return this;
   }
 
-  handleResponse(status, headers, body) {
-    const more = Boolean(headers['x-more']);
-
-    if (!this._response) {
-      this._response = new ClientResponse()
-        .connection(this)
-        .status(status)
-        .headers(headers);
-
-      this.emit('response', this._response);
+  response(value = null) {
+    if (value === null) {
+      return this._response;
     }
 
-    if (body !== null) {
-      this._response.write(body);
+    if (this._response) {
+      return this;
     }
 
-    if (more === false) {
-      this._response.end();
-    }
+    this._response = value;
+    this.emit('response', value);
+
+    return this;
   }
 
   end(data, encoding, callback) {
-    this._writeOnEnd = true;
-
-    if (this._headers['x-more']) {
-      this._headers['x-more'] = 0;
-    }
-
+    this._ended = true;
     super.end(data, encoding, callback);
   }
 
-  write(data, encoding, callback) {
-    if (this._writeOnEnd === false) {
-      this._headers['x-more'] = 1;
-    }
+  _bind() {
+    this.once('finish', this._handleFinish);
+  }
 
-    this._writeOnEnd = false;
-    super.write(data, encoding, callback);
+  _unbind() {
+    this.removeListener('finish', this._handleFinish);
+  }
+
+  _bindEncoder() {
+    if (this._encoder) {
+      this._encoder.on('data', this._handleData);
+    }
+  }
+
+  _unbindEncoder() {
+    if (this._encoder) {
+      this._encoder.removeListener('data', this._handleData);
+    }
   }
 
   _write(data, encoding, callback) {
+    if (this._ended === false) {
+      this._headers['x-more'] = 1;
+    } else if (this._headers['x-more'] === 1) {
+      this._headers['x-more'] = 0;
+    }
+
     data = [this._mpq(), Object.assign({}, this._headers), data];
     this._instance().write(data, encoding, callback);
+  }
+
+  _finish() {
+    const more = Boolean(this._headers['x-more']);
+
+    if (this._writer && more === false) {
+      this.destroy();
+      return;
+    }
+
+    this._write(null, null, () => {
+      this.destroy();
+    });
   }
 
   _mpq() {
@@ -152,10 +173,11 @@ export default class ClientRequest extends Writable {
     this._writer = new Writer();
     this._encoder = this._connection.encoder(this._writer);
 
-    this._encoder.on('data', (data) => {
-      this._connection.send(data);
-    });
-
+    this._bindEncoder();
     return this._writer;
+  }
+
+  _data(data) {
+    this._connection.send(data);
   }
 }
