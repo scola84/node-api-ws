@@ -20,18 +20,11 @@ export default class ServerResponseAdapter extends Writable {
     this._handleData = (d) => this._data(d);
     this._handleFinish = () => this._finish();
 
-    this._bind();
+    this._bindThis();
   }
 
   destroy() {
-    if (this._writer) {
-      this._writer.end();
-    }
-
-    this._unbind();
-    this._unbindEncoder();
-
-    this.end();
+    this._tearDown();
 
     this._connection = null;
     this._writer = null;
@@ -60,11 +53,11 @@ export default class ServerResponseAdapter extends Writable {
     delete this.headers[name.toLowerCase()];
   }
 
-  _bind() {
+  _bindThis() {
     this.once('finish', this._handleFinish);
   }
 
-  _unbind() {
+  _unbindThis() {
     this.removeListener('finish', this._handleFinish);
   }
 
@@ -89,36 +82,53 @@ export default class ServerResponseAdapter extends Writable {
 
     this._writes -= 1;
 
-    data = [this.statusCode, Object.assign({}, this.headers), data];
-    this._instance().write(data, encoding, callback);
+    data = [
+      this.statusCode,
+      Object.assign({}, this.headers),
+      data
+    ];
+
+    this._setUp().write(data, encoding, callback);
+  }
+
+  _data(data) {
+    this._connection.send(data);
   }
 
   _finish() {
     const more = Boolean(this.headers['x-more']);
 
     if (this._writer && more === false) {
-      this.destroy();
+      this._tearDown();
       return;
     }
 
     this._write(null, null, () => {
-      this.destroy();
+      this._tearDown();
     });
   }
 
-  _instance() {
+  _setUp() {
     if (this._writer) {
       return this._writer;
     }
 
     this._writer = new Writer();
-    this._encoder = this._connection.encoder(this._writer);
+    this._encoder = this._connection
+      .encoder(this._writer);
 
     this._bindEncoder();
     return this._writer;
   }
 
-  _data(data) {
-    this._connection.send(data);
+  _tearDown() {
+    if (this._writer) {
+      this._writer.end();
+    }
+
+    this._unbindThis();
+    this._unbindEncoder();
+
+    this.end();
   }
 }

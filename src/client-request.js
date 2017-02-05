@@ -23,22 +23,11 @@ export default class ClientRequest extends Writable {
     this._handleData = (d) => this._data(d);
     this._handleFinish = () => this._finish();
 
-    this._bind();
+    this._bindThis();
   }
 
-  destroy(abort = false) {
-    if (this._writer) {
-      this._writer.end();
-    }
-
-    this._unbind();
-    this._unbindEncoder();
-
-    if (abort === true) {
-      this.emit('abort');
-    }
-
-    this.end();
+  destroy(abort) {
+    this._tearDown(abort);
 
     this._connection = null;
     this._response = null;
@@ -116,11 +105,11 @@ export default class ClientRequest extends Writable {
     super.end(data, encoding, callback);
   }
 
-  _bind() {
+  _bindThis() {
     this.once('finish', this._handleFinish);
   }
 
-  _unbind() {
+  _unbindThis() {
     this.removeListener('finish', this._handleFinish);
   }
 
@@ -143,41 +132,65 @@ export default class ClientRequest extends Writable {
       this._headers['x-more'] = 0;
     }
 
-    data = [this._mpq(), Object.assign({}, this._headers), data];
-    this._instance().write(data, encoding, callback);
+    data = [
+      this._mpq(),
+      Object.assign({}, this._headers),
+      data
+    ];
+
+    this._setUp().write(data, encoding, callback);
+  }
+
+  _mpq() {
+    const query = formatQuery(this._query);
+
+    return this._method + ' ' +
+      this._path +
+      (query ? '?' + query : '');
+  }
+
+  _data(data) {
+    this._connection.send(data);
   }
 
   _finish() {
     const more = Boolean(this._headers['x-more']);
 
     if (this._writer && more === false) {
-      this.destroy();
+      this._tearDown();
       return;
     }
 
     this._write(null, null, () => {
-      this.destroy();
+      this._tearDown();
     });
   }
 
-  _mpq() {
-    const query = formatQuery(this._query);
-    return this._method + ' ' + this._path + (query ? '?' + query : '');
-  }
-
-  _instance() {
+  _setUp() {
     if (this._writer) {
       return this._writer;
     }
 
     this._writer = new Writer();
-    this._encoder = this._connection.encoder(this._writer);
+    this._encoder = this._connection
+      .encoder(this._writer);
 
     this._bindEncoder();
     return this._writer;
   }
 
-  _data(data) {
-    this._connection.send(data);
+  _tearDown(abort = false) {
+    if (this._writer) {
+      this._writer.end();
+    }
+
+    this._unbindThis();
+    this._unbindEncoder();
+
+    if (abort === true) {
+      this.emit('abort');
+    }
+
+    this.end();
   }
 }

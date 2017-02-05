@@ -67,10 +67,7 @@ export default class WsConnection extends EventEmitter {
     this._socket = value;
     this._bindSocket();
 
-    if (this._auto) {
-      this._open({});
-    }
-
+    this.emit('socket', value);
     return this;
   }
 
@@ -299,7 +296,7 @@ export default class WsConnection extends EventEmitter {
     }
 
     if (more === false) {
-      request.destroy();
+      request.request().end();
     }
   }
 
@@ -318,7 +315,7 @@ export default class WsConnection extends EventEmitter {
     }
 
     if (more === false) {
-      response.destroy();
+      response.end();
     }
   }
 
