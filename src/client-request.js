@@ -142,7 +142,10 @@ export default class ClientRequest extends Writable {
   }
 
   _mpq() {
-    const query = formatQuery(this._query);
+    const query = formatQuery(this._query, {
+      allowDots: true,
+      arrayFormat: 'repeat'
+    });
 
     return this._method + ' ' +
       this._path +
