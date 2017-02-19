@@ -7,6 +7,8 @@ import {
   Writer
 } from '@scola/api-http';
 
+import { Reconnector } from '@scola/websocket';
+
 import { ScolaError } from '@scola/error';
 import ClientRequest from './client-request';
 import ClientResponse from './client-response';
@@ -20,8 +22,8 @@ export default class WsConnection extends EventEmitter {
     this._socket = null;
     this._router = null;
     this._codec = null;
+    this._reconnector = null;
     this._user = null;
-    this._auto = true;
 
     this._id = 0;
 
@@ -32,13 +34,14 @@ export default class WsConnection extends EventEmitter {
 
     this._interval = null;
 
+    this._handleOpen = (e) => this._open(e);
     this._handleClose = (e) => this._close(e);
     this._handleError = (e) => this._error(e);
     this._handleMessage = (e) => this._message(e);
   }
 
-  open(event) {
-    this.socket(event.socket);
+  open() {
+    this._reconnector.open();
     return this;
   }
 
@@ -60,14 +63,11 @@ export default class WsConnection extends EventEmitter {
       return this._socket;
     }
 
-    if (this._socket) {
-      this._unbindSocket();
-    }
-
+    this._unbindSocket();
     this._socket = value;
     this._bindSocket();
 
-    this.emit('socket', value);
+    this.emit('open', value);
     return this;
   }
 
@@ -95,10 +95,16 @@ export default class WsConnection extends EventEmitter {
     }
 
     this._user = value;
+
+    this.emit('user', value);
     return this;
   }
 
   upgrade(value = null) {
+    if (!this._socket) {
+      return value === null ? null : this;
+    }
+
     if (value === null) {
       return this._socket.upgradeReq;
     }
@@ -107,12 +113,21 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  auto(value = null) {
-    if (value === null) {
-      return this._auto;
+  reconnector(options = null) {
+    if (options === null) {
+      return this._reconnector;
     }
 
-    this._auto = value;
+    const protocol = options.protocol || 'wss:';
+    const url = protocol + '//' + options.host + ':' + options.port;
+
+    this._reconnector = new Reconnector();
+    this._reconnector.url(url);
+    this._reconnector.class(options.class);
+    this._reconnector.attempts(options.attempts);
+    this._reconnector.factor(options.factor);
+
+    this._bindReconnector();
     return this;
   }
 
@@ -134,7 +149,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   send(data) {
-    if (this._socket.readyState !== this._socket.OPEN) {
+    if (!this._socket || this._socket.readyState !== this._socket.OPEN) {
       return;
     }
 
@@ -150,39 +165,45 @@ export default class WsConnection extends EventEmitter {
   }
 
   address() {
-    let address = null;
-    let port = null;
-
-    if (this._socket.upgradeReq) {
-      if (this._socket.upgradeReq.headers['x-real-ip']) {
-        address = this._socket.upgradeReq.headers['x-real-ip'];
-        port = this._socket.upgradeReq.headers['x-real-port'];
-      } else {
-        address = this._socket.upgradeReq.connection.remoteAddress;
-        port = this._socket.upgradeReq.connection.remotePort;
-      }
-    } else {
-      const parsedUrl = parseUrl(this._socket.url);
-      address = parsedUrl.hostname;
-      port = parsedUrl.port;
+    if (!this._socket) {
+      return {};
     }
 
-    return {
-      address,
-      port
-    };
+    if (this._socket.upgradeReq) {
+      return this._upgrade();
+    }
+
+    return this._parse();
+  }
+
+  _bindReconnector() {
+    if (this._reconnector) {
+      this._reconnector.on('open', this._handleOpen);
+      this._reconnector.on('error', this._handleError);
+    }
+  }
+
+  _unbindReconnector() {
+    if (this._reconnector) {
+      this._reconnector.removeListener('open', this._handleOpen);
+      this._reconnector.removeListener('error', this._handleError);
+    }
   }
 
   _bindSocket() {
-    this._socket.addEventListener('close', this._handleClose);
-    this._socket.addEventListener('error', this._handleError);
-    this._socket.addEventListener('message', this._handleMessage);
+    if (this._socket) {
+      this._socket.addEventListener('close', this._handleClose);
+      this._socket.addEventListener('error', this._handleError);
+      this._socket.addEventListener('message', this._handleMessage);
+    }
   }
 
   _unbindSocket() {
-    this._socket.removeEventListener('close', this._handleClose);
-    this._socket.removeEventListener('error', this._handleError);
-    this._socket.removeEventListener('message', this._handleMessage);
+    if (this._socket) {
+      this._socket.removeEventListener('close', this._handleClose);
+      this._socket.removeEventListener('error', this._handleError);
+      this._socket.removeEventListener('message', this._handleMessage);
+    }
   }
 
   _close(event, force = false) {
@@ -202,13 +223,11 @@ export default class WsConnection extends EventEmitter {
       this._outres[id].destroy(true);
     });
 
-    if (this._auto === false && force === false) {
+    if (this._reconnector && force === false) {
       return;
     }
 
-    if (this._socket) {
-      this._unbindSocket();
-    }
+    this._unbindSocket();
 
     if (this._interval) {
       clearInterval(this._interval);
@@ -225,8 +244,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   _open(event) {
-    event.connection = this;
-    this.emit('open', event);
+    this.socket(event.socket);
   }
 
   _message(event) {
@@ -378,8 +396,31 @@ export default class WsConnection extends EventEmitter {
   }
 
   _ping() {
-    if (this._socket.readyState === this._socket.OPEN) {
+    if (this._socket && this._socket.readyState === this._socket.OPEN) {
       this._socket.ping();
     }
+  }
+
+  _parse() {
+    const parsedUrl = parseUrl(this._socket.url);
+
+    return {
+      address: parsedUrl.hostname,
+      port: parsedUrl.port
+    };
+  }
+
+  _upgrade() {
+    if (this._socket.upgradeReq.headers['x-real-ip']) {
+      return {
+        address: this._socket.upgradeReq.headers['x-real-ip'],
+        port: this._socket.upgradeReq.headers['x-real-port']
+      };
+    }
+
+    return {
+      address: this._socket.upgradeReq.connection.remoteAddress,
+      port: this._socket.upgradeReq.connection.remotePort
+    };
   }
 }
