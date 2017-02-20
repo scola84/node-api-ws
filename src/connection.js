@@ -284,9 +284,11 @@ export default class WsConnection extends EventEmitter {
 
   _handleCheck(error, data) {
     if (error) {
+      error = new ScolaError('400 invalid_protocol ' + error.message);
+
       this.close(1002);
-      this.emit('error',
-        new ScolaError('400 invalid_protocol ' + error.message));
+      this.emit('error', error);
+
       return;
     }
 
