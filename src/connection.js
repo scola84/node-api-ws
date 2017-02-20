@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { parse as parseUrl } from 'url';
+import { debuglog } from 'util';
 
 import {
   ServerRequest,
@@ -19,6 +20,8 @@ export default class WsConnection extends EventEmitter {
   constructor() {
     super();
 
+    this._log = debuglog('ws');
+
     this._socket = null;
     this._router = null;
     this._codec = null;
@@ -27,10 +30,10 @@ export default class WsConnection extends EventEmitter {
 
     this._id = 0;
 
-    this._inreq = {};
-    this._inres = {};
-    this._outreq = {};
-    this._outres = {};
+    this._inreq = new Map();
+    this._inres = new Map();
+    this._outreq = new Map();
+    this._outres = new Map();
 
     this._interval = null;
 
@@ -41,11 +44,15 @@ export default class WsConnection extends EventEmitter {
   }
 
   open() {
+    this._log('Connection open');
     this._reconnector.open();
+
     return this;
   }
 
   close(code, reason) {
+    this._log('Connection close %s %s', code, reason);
+
     if (this._socket) {
       this._socket.close(code, reason);
     }
@@ -62,6 +69,8 @@ export default class WsConnection extends EventEmitter {
     if (value === null) {
       return this._socket;
     }
+
+    this._log('Connection socket');
 
     this._unbindSocket();
     this._socket = value;
@@ -95,8 +104,8 @@ export default class WsConnection extends EventEmitter {
     }
 
     this._user = value;
-
     this.emit('user', value);
+
     return this;
   }
 
@@ -144,16 +153,15 @@ export default class WsConnection extends EventEmitter {
   }
 
   request() {
-    const [request] = this._outgoing();
-    return request;
+    return this._outgoing();
   }
 
   send(data) {
-    if (!this._socket || this._socket.readyState !== this._socket.OPEN) {
-      return;
-    }
+    this._log('Connection send %j', data);
 
-    this._socket.send(data);
+    if (this._socket && this._socket.readyState === this._socket.OPEN) {
+      this._socket.send(data);
+    }
   }
 
   decoder(writer) {
@@ -207,20 +215,20 @@ export default class WsConnection extends EventEmitter {
   }
 
   _close(event, force = false) {
-    Object.keys(this._inreq).forEach((id) => {
-      this._inreq[id].destroy(true);
+    this._inreq.forEach((request) => {
+      request.destroy(true);
     });
 
-    Object.keys(this._inres).forEach((id) => {
-      this._inres[id].destroy(true);
+    this._inres.forEach((response) => {
+      response.destroy(true);
     });
 
-    Object.keys(this._outreq).forEach((id) => {
-      this._outreq[id].destroy(true);
+    this._outreq.forEach((request) => {
+      request.destroy(true);
     });
 
-    Object.keys(this._outres).forEach((id) => {
-      this._outres[id].destroy(true);
+    this._outres.forEach((response) => {
+      response.destroy(true);
     });
 
     if (this._reconnector && force === false) {
@@ -266,7 +274,7 @@ export default class WsConnection extends EventEmitter {
       return;
     }
 
-    const isRequest = (/^(GET|POST|PUT|DELETE|SUB|PUB)\s(.+)$/).test(data[0]);
+    const isRequest = (/^(GET|POST|PUT|DELETE)\s(.+)$/).test(data[0]);
     const isResponse = typeof data[0] === 'number';
 
     if (!isRequest && !isResponse) {
@@ -303,7 +311,7 @@ export default class WsConnection extends EventEmitter {
     const id = Number(headers['x-id']);
     const more = Boolean(headers['x-more']);
 
-    let request = this._inreq[id];
+    let request = this._inreq.get(id);
     let response = null;
 
     if (!request) {
@@ -324,7 +332,7 @@ export default class WsConnection extends EventEmitter {
     const id = Number(headers['x-id']);
     const more = Boolean(headers['x-more']);
 
-    const response = this._outres[id];
+    const response = this._outres.get(id);
 
     response
       .status(status)
@@ -358,16 +366,21 @@ export default class WsConnection extends EventEmitter {
 
     response.header('x-id', id);
 
-    this._inreq[id] = request;
-    this._inres[id] = response;
+    this._inreq.set(id, request);
+    this._inres.set(id, response);
 
     request.once('end', () => {
-      delete this._inreq[id];
+      this._inreq.delete(id);
+      this._log('Connection _incoming end (%s)', this._inreq.size);
     });
 
     response.once('finish', () => {
-      delete this._inres[id];
+      this._inres.delete(id);
+      this._log('Connection _incoming finish (%s)', this._inres.size);
     });
+
+    this._log('Connection _incoming %j %j (%s, %s)', mpq, headers,
+      this._inreq.size, this._inres.size);
 
     return [request, response];
   }
@@ -383,21 +396,28 @@ export default class WsConnection extends EventEmitter {
       .connection(this)
       .request(request);
 
-    this._outreq[id] = request;
-    this._outres[id] = response;
+    this._outreq.set(id, request);
+    this._outres.set(id, response);
 
     request.once('finish', () => {
-      delete this._outreq[id];
+      this._outreq.delete(id);
+      this._log('Connection _outgoing finish (%s)', this._outreq.size);
     });
 
     response.once('end', () => {
-      delete this._outres[id];
+      this._outres.delete(id);
+      this._log('Connection _outgoing end (%s)', this._outres.size);
     });
 
-    return [request, response];
+    this._log('Connection _outgoing %s (%s, %s)', id,
+      this._outreq.size, this._outres.size);
+
+    return request;
   }
 
   _ping() {
+    this._log('Connection _ping');
+
     if (this._socket && this._socket.readyState === this._socket.OPEN) {
       this._socket.ping();
     }

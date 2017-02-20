@@ -1,9 +1,12 @@
 import { EventEmitter } from 'events';
+import { debuglog } from 'util';
 import WsConnection from './connection';
 
 export default class WsConnector extends EventEmitter {
   constructor() {
     super();
+
+    this._log = debuglog('ws');
 
     this._server = null;
     this._router = null;
@@ -18,6 +21,7 @@ export default class WsConnector extends EventEmitter {
   }
 
   close(code, reason) {
+    this._log('Connector close %s %s', code, reason);
     this._unbindServer();
     this._closeConnections(code, reason);
   }
@@ -110,6 +114,7 @@ export default class WsConnector extends EventEmitter {
     this._connections.add(connection);
     this._bindConnection(connection);
 
+    this._log('Connector _connection (%s)', this._connections.size);
     this.emit('connection', connection);
   }
 
@@ -117,6 +122,7 @@ export default class WsConnector extends EventEmitter {
     this._connections.delete(event.connection);
     this._unbindConnection(event.connection);
 
+    this._log('Connector _close (%s)', this._connections.size);
     this.emit('close', event);
   }
 

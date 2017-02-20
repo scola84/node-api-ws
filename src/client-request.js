@@ -1,5 +1,6 @@
-import { Writable } from 'stream';
 import formatQuery from 'qs/lib/stringify';
+import { Writable } from 'stream';
+import { debuglog } from 'util';
 import { Writer } from '@scola/api-http';
 
 export default class ClientRequest extends Writable {
@@ -7,6 +8,8 @@ export default class ClientRequest extends Writable {
     super({
       objectMode: true
     });
+
+    this._log = debuglog('ws');
 
     this._connection = null;
     this._response = null;
@@ -27,6 +30,7 @@ export default class ClientRequest extends Writable {
   }
 
   destroy(abort) {
+    this._log('ClientRequest destroy %s', abort);
     this._tearDown(abort);
 
     this._connection = null;
@@ -126,6 +130,8 @@ export default class ClientRequest extends Writable {
   }
 
   _write(data, encoding, callback) {
+    this._log('ClientRequest _write %j (%s)', data, this._ended);
+
     if (this._ended === false) {
       this._headers['x-more'] = 1;
     } else if (this._headers['x-more'] === 1) {
@@ -153,10 +159,13 @@ export default class ClientRequest extends Writable {
   }
 
   _data(data) {
+    this._log('ClientRequest _data %j', data);
     this._connection.send(data);
   }
 
   _finish() {
+    this._log('ClientRequest _finish');
+
     const more = Boolean(this._headers['x-more']);
 
     if (this._writer && more === false) {

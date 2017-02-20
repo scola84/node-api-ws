@@ -1,4 +1,5 @@
 import { Writable } from 'stream';
+import { debuglog } from 'util';
 import { Writer } from '@scola/api-http';
 
 export default class ServerResponseAdapter extends Writable {
@@ -6,6 +7,8 @@ export default class ServerResponseAdapter extends Writable {
     super({
       objectMode: true
     });
+
+    this._log = debuglog('ws');
 
     this._connection = null;
     this._writer = null;
@@ -24,6 +27,7 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   destroy() {
+    this._log('ServerResponseAdapter destroy');
     this._tearDown();
 
     this._connection = null;
@@ -74,6 +78,9 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   _write(data, encoding, callback) {
+    this._log('ServerResponseAdapter _write %j (%s)',
+      data, this._ended);
+
     if (this._ended === false || this._writes > 1) {
       this.headers['x-more'] = 1;
     } else if (this.headers['x-more'] === 1) {
@@ -92,10 +99,13 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   _data(data) {
+    this._log('ServerResponseAdapter _data %j', data);
     this._connection.send(data);
   }
 
   _finish() {
+    this._log('ServerResponseAdapter _finish');
+
     const more = Boolean(this.headers['x-more']);
 
     if (this._writer && more === false) {

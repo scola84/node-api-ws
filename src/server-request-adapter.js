@@ -1,4 +1,5 @@
 import { PassThrough } from 'stream';
+import { debuglog } from 'util';
 
 export default class ServerRequestAdapter extends PassThrough {
   constructor(mpq, headers) {
@@ -6,6 +7,7 @@ export default class ServerRequestAdapter extends PassThrough {
       objectMode: true
     });
 
+    this._log = debuglog('ws');
     this._connection = null;
 
     const [method, url] = mpq.split(' ');
@@ -16,6 +18,7 @@ export default class ServerRequestAdapter extends PassThrough {
   }
 
   destroy() {
+    this._log('ServerRequestAdapter destroy');
     this.end();
     this._connection = null;
   }

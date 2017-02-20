@@ -1,4 +1,5 @@
 import { PassThrough } from 'stream';
+import { debuglog } from 'util';
 import { parseHeader } from '@scola/api-http';
 
 export default class ClientResponse extends PassThrough {
@@ -6,6 +7,8 @@ export default class ClientResponse extends PassThrough {
     super({
       objectMode: true
     });
+
+    this._log = debuglog('ws');
 
     this._connection = null;
     this._request = null;
@@ -16,6 +19,8 @@ export default class ClientResponse extends PassThrough {
   }
 
   destroy(abort = false) {
+    this._log('ClientResponse destroy %s', abort);
+
     if (abort === true) {
       this.emit('abort');
     }
