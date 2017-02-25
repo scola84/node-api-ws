@@ -27,6 +27,7 @@ export default class WsConnection extends EventEmitter {
     this._codec = null;
     this._reconnector = null;
     this._user = null;
+    this._auth = false;
 
     this._id = 0;
 
@@ -109,6 +110,17 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  auth(value = null) {
+    if (value === null) {
+      return this._auth;
+    }
+
+    this._auth = value;
+    this.emit('auth', value);
+
+    return this;
+  }
+
   upgrade(value = null) {
     if (!this._socket) {
       return value === null ? null : this;
@@ -156,12 +168,15 @@ export default class WsConnection extends EventEmitter {
     return this._outgoing();
   }
 
-  send(data) {
+  send(data, callback = () => {}) {
     this._log('Connection send %j', data);
 
-    if (this._socket && this._socket.readyState === this._socket.OPEN) {
-      this._socket.send(data);
+    if (!this.writable()) {
+      callback(new ScolaError('500 invalid_socket'));
+      return;
     }
+
+    this._socket.send(data);
   }
 
   decoder(writer) {
@@ -182,6 +197,11 @@ export default class WsConnection extends EventEmitter {
     }
 
     return this._parse();
+  }
+
+  writable() {
+    return this._socket &&
+      this._socket.readyState === this._socket.OPEN;
   }
 
   _bindReconnector() {

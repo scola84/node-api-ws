@@ -160,7 +160,12 @@ export default class ClientRequest extends Writable {
 
   _data(data) {
     this._log('ClientRequest _data %j', data);
-    this._connection.send(data);
+
+    this._connection.send(data, (error) => {
+      if (error) {
+        this.emit('error', error);
+      }
+    });
   }
 
   _finish() {
