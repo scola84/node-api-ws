@@ -144,7 +144,7 @@ export default class WsConnection extends EventEmitter {
 
     this._reconnector = new Reconnector();
     this._reconnector.url(url);
-    this._reconnector.class(options.class);
+    this._reconnector.factory(options.factory);
     this._reconnector.attempts(options.attempts);
     this._reconnector.factor(options.factor);
 
