@@ -207,14 +207,12 @@ export default class WsConnection extends EventEmitter {
   _bindReconnector() {
     if (this._reconnector) {
       this._reconnector.on('open', this._handleOpen);
-      this._reconnector.on('error', this._handleError);
     }
   }
 
   _unbindReconnector() {
     if (this._reconnector) {
       this._reconnector.removeListener('open', this._handleOpen);
-      this._reconnector.removeListener('error', this._handleError);
     }
   }
 
