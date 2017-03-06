@@ -15,7 +15,7 @@ export default class ServerResponseAdapter extends Writable {
     this._encoder = null;
 
     this.statusCode = 200;
-    this.headers = {};
+    this._headers = {};
 
     this._writes = 0;
     this._ended = false;
@@ -45,16 +45,16 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   getHeader(name) {
-    return this.headers[name] || this.headers[name.toLowerCase()];
+    return this._headers[name] || this._headers[name.toLowerCase()];
   }
 
   setHeader(name, value) {
-    this.headers[name] = value;
+    this._headers[name] = value;
   }
 
   removeHeader(name) {
-    delete this.headers[name];
-    delete this.headers[name.toLowerCase()];
+    delete this._headers[name];
+    delete this._headers[name.toLowerCase()];
   }
 
   _bindThis() {
@@ -82,16 +82,16 @@ export default class ServerResponseAdapter extends Writable {
       data, this._ended);
 
     if (this._ended === false || this._writes > 1) {
-      this.headers['x-more'] = 1;
-    } else if (this.headers['x-more'] === 1) {
-      this.headers['x-more'] = 0;
+      this._headers['x-more'] = 1;
+    } else if (this._headers['x-more'] === 1) {
+      this._headers['x-more'] = 0;
     }
 
     this._writes -= 1;
 
     data = [
       this.statusCode,
-      Object.assign({}, this.headers),
+      Object.assign({}, this._headers),
       data
     ];
 
@@ -111,7 +111,7 @@ export default class ServerResponseAdapter extends Writable {
   _finish() {
     this._log('ServerResponseAdapter _finish');
 
-    const more = Boolean(this.headers['x-more']);
+    const more = Boolean(this._headers['x-more']);
 
     if (this._writer && more === false) {
       this._tearDown();
