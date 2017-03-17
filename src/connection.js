@@ -27,7 +27,6 @@ export default class WsConnection extends EventEmitter {
     this._codec = null;
     this._reconnector = null;
     this._user = null;
-    this._auth = false;
 
     this._id = 0;
 
@@ -105,19 +104,6 @@ export default class WsConnection extends EventEmitter {
     }
 
     this._user = value;
-    this.emit('user', value);
-
-    return this;
-  }
-
-  auth(value = null) {
-    if (value === null) {
-      return this._auth;
-    }
-
-    this._auth = value;
-    this.emit('auth', value);
-
     return this;
   }
 
@@ -249,6 +235,9 @@ export default class WsConnection extends EventEmitter {
       response.destroy(true);
     });
 
+    event.connection = this;
+    this.emit('close', event);
+
     if (this._reconnector && force === false) {
       return;
     }
@@ -259,9 +248,6 @@ export default class WsConnection extends EventEmitter {
       clearInterval(this._interval);
       this._interval = null;
     }
-
-    event.connection = this;
-    this.emit('close', event);
   }
 
   _error(event) {
