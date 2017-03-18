@@ -5,8 +5,8 @@
   "repository": "github:scola84/node-api-ws",
   "author": "M.C. van den Boogaart <scola@kvdb.name>",
   "license": "MIT",
-  "main": "./dist/api-ws.js",
-  "jsnext:main": "index.js",
+  "main": "./index.js",
+  "jsnext:main": "./index.js",
   "dependencies": {
     "@scola/api-http": "^4.1.1",
     "@scola/error": "^4.3.0",
