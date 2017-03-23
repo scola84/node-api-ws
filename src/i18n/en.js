@@ -1,7 +1,7 @@
 export default {
   scola: {
     error: {
-      invalid_data: 'The data was not found.',
+      invalid_data: 'No data found.',
       invalid_protocol: 'A protocol error occurred.',
       invalid_query: 'A server error occurred.',
       invalid_request: 'A message error occurred.',

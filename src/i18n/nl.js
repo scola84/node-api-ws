@@ -1,7 +1,7 @@
 export default {
   scola: {
     error: {
-      invalid_data: 'De gegevens zijn niet gevonden.',
+      invalid_data: 'Geen gegevens gevonden.',
       invalid_protocol: 'Er is een protocolfout opgetreden.',
       invalid_query: 'Er is een serverfout opgetreden.',
       invalid_request: 'Er is een berichtfout opgetreden.',
