@@ -108,7 +108,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   upgrade(value = null) {
-    if (!this._socket) {
+    if (this._socket === null) {
       return value === null ? null : this;
     }
 
@@ -145,7 +145,7 @@ export default class WsConnection extends EventEmitter {
 
     this._interval = setInterval(() => {
       this._ping();
-    }, duration);
+    }, duration * 1000);
 
     return this;
   }
@@ -157,7 +157,7 @@ export default class WsConnection extends EventEmitter {
   send(data, callback = () => {}) {
     this._log('Connection send %j', data);
 
-    if (!this.writable()) {
+    if (this.connected() === false) {
       callback(new ScolaError('500 invalid_socket'));
       return;
     }
@@ -174,7 +174,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   address() {
-    if (!this._socket) {
+    if (this._socket === null) {
       return {};
     }
 
@@ -185,8 +185,8 @@ export default class WsConnection extends EventEmitter {
     return this._parse();
   }
 
-  writable() {
-    return this._socket &&
+  connected() {
+    return this._socket !== null &&
       this._socket.readyState === this._socket.OPEN;
   }
 
@@ -273,7 +273,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   _checkProtocol(data, callback) {
-    if (!Array.isArray(data) || data.length !== 3) {
+    if (Array.isArray(data) === false || data.length !== 3) {
       callback(new Error('Message has an invalid structure'));
       return;
     }
@@ -281,7 +281,7 @@ export default class WsConnection extends EventEmitter {
     const isRequest = (/^(GET|POST|PUT|DELETE)\s(.+)$/).test(data[0]);
     const isResponse = typeof data[0] === 'number';
 
-    if (!isRequest && !isResponse) {
+    if (isRequest === false && isResponse === false) {
       callback(new Error('Message identifier is invalid: ' + data[0]));
       return;
     }
@@ -295,7 +295,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   _handleCheck(error, data) {
-    if (error) {
+    if (error instanceof Error === true) {
       error = new ScolaError('400 invalid_protocol ' + error.message);
 
       this.close(1002);
@@ -315,10 +315,10 @@ export default class WsConnection extends EventEmitter {
     const id = Number(headers['x-id']);
     const more = Boolean(headers['x-more']);
 
-    let request = this._inreq.get(id);
+    let request = this._inreq.get(id) || null;
     let response = null;
 
-    if (!request) {
+    if (request === null) {
       [request, response] = this._incoming(mpq, headers);
       this._router.handleRequest(request, response);
     }
@@ -437,16 +437,17 @@ export default class WsConnection extends EventEmitter {
   }
 
   _upgrade() {
-    if (this._socket.upgradeReq.headers['x-real-ip']) {
-      return {
-        address: this._socket.upgradeReq.headers['x-real-ip'],
-        port: this._socket.upgradeReq.headers['x-real-port']
-      };
+    let address = this._socket.upgradeReq.headers['x-real-ip'];
+    let port = this._socket.upgradeReq.headers['x-real-port'];
+
+    if (typeof address === 'undefined') {
+      address = this._socket.upgradeReq.connection.remoteAddress;
+      port = this._socket.upgradeReq.connection.remotePort;
     }
 
     return {
-      address: this._socket.upgradeReq.connection.remoteAddress,
-      port: this._socket.upgradeReq.connection.remotePort
+      address,
+      port
     };
   }
 }

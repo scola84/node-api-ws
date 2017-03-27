@@ -31,13 +31,14 @@ export default class ServerRequestAdapter extends PassThrough {
     this._connection = value;
     const request = this._connection.upgrade();
 
-    if (request) {
-      this._headers = Object.assign({},
-        request.headers, this._headers);
-
-      delete this._headers.accept;
+    if (request === null) {
+      return this;
     }
 
+    this._headers = Object.assign({},
+      request.headers, this._headers);
+
+    delete this._headers.accept;
     return this;
   }
 }

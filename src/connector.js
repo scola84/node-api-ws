@@ -98,7 +98,7 @@ export default class WsConnector extends EventEmitter {
   }
 
   _connection(socket) {
-    if (!socket.removeEventListener) {
+    if (typeof socket.removeEventListener !== 'function') {
       socket.removeEventListener = socket.removeListener;
     }
 

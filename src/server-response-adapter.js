@@ -102,7 +102,7 @@ export default class ServerResponseAdapter extends Writable {
     this._log('ServerResponseAdapter _data %j', data);
 
     this._connection.send(data, (error) => {
-      if (error) {
+      if (error instanceof Error === true) {
         this.emit('error', error);
       }
     });
@@ -113,7 +113,7 @@ export default class ServerResponseAdapter extends Writable {
 
     const more = Boolean(this._headers['x-more']);
 
-    if (this._writer && more === false) {
+    if (more === false && this._writer) {
       this._tearDown();
       return;
     }

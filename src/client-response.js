@@ -54,7 +54,7 @@ export default class ClientResponse extends PassThrough {
       return this._status;
     }
 
-    if (!this._status) {
+    if (this._status === null) {
       this._request.emit('response', this);
     }
 
@@ -75,7 +75,11 @@ export default class ClientResponse extends PassThrough {
     const header = this._headers[name] ||
       this._headers[name.toLowerCase()];
 
-    return header && parse ? parseHeader(header) : header;
+    if (typeof header === 'undefined') {
+      return null;
+    }
+
+    return parse === true ? parseHeader(header) : header;
   }
 
   data(value = null) {

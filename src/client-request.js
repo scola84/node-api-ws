@@ -77,7 +77,8 @@ export default class ClientRequest extends Writable {
 
   header(name, value = null) {
     if (value === null) {
-      return this._headers[name];
+      return typeof this._headers[name] === 'undefined' ?
+        null : this._headers[name];
     }
 
     if (value === false) {
@@ -155,14 +156,14 @@ export default class ClientRequest extends Writable {
 
     return this._method + ' ' +
       this._path +
-      (query ? '?' + query : '');
+      (query.length > 0 ? '?' + query : '');
   }
 
   _data(data) {
     this._log('ClientRequest _data %j', data);
 
     this._connection.send(data, (error) => {
-      if (error) {
+      if (error instanceof Error === true) {
         this.emit('error', error);
       }
     });
@@ -173,7 +174,7 @@ export default class ClientRequest extends Writable {
 
     const more = Boolean(this._headers['x-more']);
 
-    if (this._writer && more === false) {
+    if (more === false && this._writer) {
       this._tearDown();
       return;
     }
