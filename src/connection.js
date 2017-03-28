@@ -37,10 +37,11 @@ export default class WsConnection extends EventEmitter {
 
     this._interval = null;
 
-    this._handleOpen = (e) => this._open(e);
     this._handleClose = (e) => this._close(e);
     this._handleError = (e) => this._error(e);
     this._handleMessage = (e) => this._message(e);
+    this._handleOpen = (e) => this._open(e);
+    this._handleReconnect = (e) => this._reconnect(e);
   }
 
   open() {
@@ -193,12 +194,14 @@ export default class WsConnection extends EventEmitter {
   _bindReconnector() {
     if (this._reconnector) {
       this._reconnector.on('open', this._handleOpen);
+      this._reconnector.on('reconnect', this._handleReconnect);
     }
   }
 
   _unbindReconnector() {
     if (this._reconnector) {
       this._reconnector.removeListener('open', this._handleOpen);
+      this._reconnector.removeListener('reconnect', this._handleReconnect);
     }
   }
 
@@ -235,12 +238,12 @@ export default class WsConnection extends EventEmitter {
       response.destroy(true);
     });
 
-    event.connection = this;
-    this.emit('close', event);
-
     if (this._reconnector && force === false) {
       return;
     }
+
+    event.connection = this;
+    this.emit('close', event);
 
     this._unbindSocket();
 
@@ -255,10 +258,6 @@ export default class WsConnection extends EventEmitter {
     this.emit('error', event);
   }
 
-  _open(event) {
-    this.socket(event.socket);
-  }
-
   _message(event) {
     const writer = new Writer();
     const decoder = this.decoder(writer);
@@ -270,6 +269,15 @@ export default class WsConnection extends EventEmitter {
     });
 
     writer.end(event.data);
+  }
+
+  _open(event) {
+    this.socket(event.socket);
+  }
+
+  _reconnect(event) {
+    event.connection = this;
+    this.emit('close', event);
   }
 
   _checkProtocol(data, callback) {
