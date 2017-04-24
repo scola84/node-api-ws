@@ -104,6 +104,8 @@ export default class WsConnection extends EventEmitter {
       return this._user;
     }
 
+    value = value === false ? null : value;
+
     this._user = value;
     return this;
   }
