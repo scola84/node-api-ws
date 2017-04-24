@@ -8,7 +8,7 @@
   "main": "./index.js",
   "jsnext:main": "./index.js",
   "dependencies": {
-    "@scola/api-http": "^5.0.0",
+    "@scola/api-http": "^5.0.1",
     "@scola/websocket": "^4.0.0",
     "qs": "^6.4.0"
   }
