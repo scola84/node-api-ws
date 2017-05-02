@@ -76,7 +76,7 @@ export default class ClientResponse extends PassThrough {
       this._headers[name.toLowerCase()];
 
     if (typeof header === 'undefined') {
-      return null;
+      return parse === true ? {} : null;
     }
 
     return parse === true ? parseHeader(header) : header;
