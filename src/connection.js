@@ -26,6 +26,9 @@ export default class WsConnection extends EventEmitter {
     this._router = null;
     this._codec = null;
     this._reconnector = null;
+
+    this._key = null;
+    this._upgrade = null;
     this._user = null;
 
     this._id = 0;
@@ -77,6 +80,10 @@ export default class WsConnection extends EventEmitter {
     this._socket = value;
     this._bindSocket();
 
+    if (typeof value.upgradeReq !== 'undefined') {
+      this.upgrade(value.upgradeReq);
+    }
+
     this.emit('open', value);
     return this;
   }
@@ -99,6 +106,15 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  key(value = null) {
+    if (value === null) {
+      return this._key;
+    }
+
+    this._key = value;
+    return this;
+  }
+
   user(value = null) {
     if (value === null) {
       return this._user;
@@ -111,15 +127,20 @@ export default class WsConnection extends EventEmitter {
   }
 
   upgrade(value = null) {
-    if (this._socket === null) {
-      return value === null ? null : this;
-    }
-
     if (value === null) {
-      return this._socket.upgradeReq;
+      return this._upgrade;
     }
 
-    this._socket.upgradeReq = value;
+    this._upgrade = value;
+
+    if (typeof value.key !== 'undefined') {
+      this._key = value.key;
+    }
+
+    if (typeof value.user !== 'undefined') {
+      this._user = value.user;
+    }
+
     return this;
   }
 
@@ -129,7 +150,13 @@ export default class WsConnection extends EventEmitter {
     }
 
     const protocol = options.protocol || 'wss:';
-    const url = protocol + '//' + options.host + ':' + options.port;
+    const path = options.path || '';
+
+    const url =
+      protocol +
+      '//' + options.host +
+      ':' + options.port +
+      path;
 
     this._reconnector = new Reconnector();
     this._reconnector.url(url);
