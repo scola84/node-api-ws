@@ -20,7 +20,6 @@ export default class ServerRequestAdapter extends PassThrough {
   destroy() {
     this._log('ServerRequestAdapter destroy');
     this.end();
-    this._connection = null;
   }
 
   connection(value) {

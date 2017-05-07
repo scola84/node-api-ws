@@ -29,10 +29,6 @@ export default class ServerResponseAdapter extends Writable {
   destroy() {
     this._log('ServerResponseAdapter destroy');
     this._tearDown();
-
-    this._connection = null;
-    this._writer = null;
-    this._encoder = null;
   }
 
   connection(value = null) {
@@ -78,7 +74,7 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   _write(data, encoding, callback) {
-    this._log('ServerResponseAdapter _write %j (%s)',
+    this._log('ServerResponseAdapter _write data=%j ended=%s',
       data, this._ended);
 
     if (this._ended === false || this._writes > 1) {
@@ -99,7 +95,7 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   _data(data) {
-    this._log('ServerResponseAdapter _data %j', data);
+    this._log('ServerResponseAdapter _data data=%j', data);
 
     this._connection.send(data, (error) => {
       if (error instanceof Error === true) {

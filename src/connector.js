@@ -21,7 +21,7 @@ export default class WsConnector extends EventEmitter {
   }
 
   close(code, reason) {
-    this._log('Connector close %s %s', code, reason);
+    this._log('Connector close code=%s reason=%s', code, reason);
     this._unbindServer();
     this._closeConnections(code, reason);
   }
@@ -114,7 +114,9 @@ export default class WsConnector extends EventEmitter {
     this._connections.add(connection);
     this._bindConnection(connection);
 
-    this._log('Connector _connection (%s)', this._connections.size);
+    this._log('Connector _connection #con=%d',
+      this._connections.size);
+
     this.emit('connection', connection);
   }
 
@@ -122,7 +124,9 @@ export default class WsConnector extends EventEmitter {
     this._connections.delete(event.connection);
     this._unbindConnection(event.connection);
 
-    this._log('Connector _close (%s)', this._connections.size);
+    this._log('Connector _close #con=%d',
+      this._connections.size);
+
     this.emit('close', event);
   }
 

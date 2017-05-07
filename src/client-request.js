@@ -30,13 +30,8 @@ export default class ClientRequest extends Writable {
   }
 
   destroy(abort) {
-    this._log('ClientRequest destroy %s', abort);
+    this._log('ClientRequest destroy abort=%s', abort);
     this._tearDown(abort);
-
-    this._connection = null;
-    this._response = null;
-    this._writer = null;
-    this._encoder = null;
   }
 
   connection(value = null) {
@@ -131,7 +126,8 @@ export default class ClientRequest extends Writable {
   }
 
   _write(data, encoding, callback) {
-    this._log('ClientRequest _write %j (%s)', data, this._ended);
+    this._log('ClientRequest _write data=%j ended=%s',
+      data, this._ended);
 
     if (this._ended === false) {
       this._headers['x-more'] = 1;
@@ -160,7 +156,7 @@ export default class ClientRequest extends Writable {
   }
 
   _data(data) {
-    this._log('ClientRequest _data %j', data);
+    this._log('ClientRequest _data data=%j', data);
 
     this._connection.send(data, (error) => {
       if (error instanceof Error === true) {

@@ -31,6 +31,7 @@ export default class WsConnection extends EventEmitter {
     this._upgrade = null;
     this._user = null;
 
+    this._address = null;
     this._id = 0;
 
     this._inreq = new Map();
@@ -55,7 +56,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   close(code, reason) {
-    this._log('Connection close %s %s', code, reason);
+    this._log('Connection close code=%s reason=%s', code, reason);
 
     if (this._socket) {
       this._socket.close(code, reason);
@@ -185,7 +186,7 @@ export default class WsConnection extends EventEmitter {
   }
 
   send(data, callback = () => {}) {
-    this._log('Connection send %j', data);
+    this._log('Connection send data=%j', data);
 
     if (this.connected() === false) {
       callback(new ScolaError('500 invalid_socket'));
@@ -196,11 +197,15 @@ export default class WsConnection extends EventEmitter {
   }
 
   decoder(writer) {
-    return this._codec && this._codec.decoder(writer, this) || writer;
+    return this._codec &&
+      this._codec.decoder(writer, this) ||
+      writer;
   }
 
   encoder(writer) {
-    return this._codec && this._codec.encoder(writer, this) || writer;
+    return this._codec &&
+      this._codec.encoder(writer, this) ||
+      writer;
   }
 
   address() {
@@ -208,11 +213,14 @@ export default class WsConnection extends EventEmitter {
       return {};
     }
 
-    if (this._socket.upgradeReq) {
-      return this._upgrade();
+    if (this._address === null) {
+      this._address =
+        typeof this._socket.upgradeReq === 'undefined' ?
+        this._parseUrl() :
+        this._parseUpgrade();
     }
 
-    return this._parse();
+    return this._address;
   }
 
   connected() {
@@ -349,6 +357,9 @@ export default class WsConnection extends EventEmitter {
   }
 
   _request([mpq, headers, body]) {
+    this._log('Connection _request mpq=%s headers=%j body=%j',
+      mpq, headers, body);
+
     const id = Number(headers['x-id']);
     const more = Boolean(headers['x-more']);
 
@@ -370,6 +381,9 @@ export default class WsConnection extends EventEmitter {
   }
 
   _response([status, headers, body]) {
+    this._log('Connection _response status=%s headers=%j body=%j',
+      status, headers, body);
+
     const id = Number(headers['x-id']);
     const more = Boolean(headers['x-more']);
 
@@ -412,16 +426,18 @@ export default class WsConnection extends EventEmitter {
 
     request.once('end', () => {
       this._inreq.delete(id);
-      this._log('Connection _incoming end (%s)', this._inreq.size);
+      this._log('Connection _incoming end #inreq=%d',
+        this._inreq.size);
     });
 
     response.once('finish', () => {
       this._inres.delete(id);
-      this._log('Connection _incoming finish (%s)', this._inres.size);
+      this._log('Connection _incoming finish #inres=%d',
+        this._inres.size);
     });
 
-    this._log('Connection _incoming %j %j (%s, %s)', mpq, headers,
-      this._inreq.size, this._inres.size);
+    this._log('Connection _incoming mpq=%s headers=%j #inreq=%d, #inres=%d)',
+      mpq, headers, this._inreq.size, this._inres.size);
 
     return [request, response];
   }
@@ -442,16 +458,18 @@ export default class WsConnection extends EventEmitter {
 
     request.once('finish', () => {
       this._outreq.delete(id);
-      this._log('Connection _outgoing finish (%s)', this._outreq.size);
+      this._log('Connection _outgoing finish #outreq=%d',
+        this._outreq.size);
     });
 
     response.once('end', () => {
       this._outres.delete(id);
-      this._log('Connection _outgoing end (%s)', this._outres.size);
+      this._log('Connection _outgoing end #outres=%d',
+        this._outres.size);
     });
 
-    this._log('Connection _outgoing %s (%s, %s)', id,
-      this._outreq.size, this._outres.size);
+    this._log('Connection _outgoing id=%s #outreq=%d #outres=%d',
+      id, this._outreq.size, this._outres.size);
 
     return request;
   }
@@ -459,12 +477,16 @@ export default class WsConnection extends EventEmitter {
   _ping() {
     this._log('Connection _ping');
 
-    if (this._socket && this._socket.readyState === this._socket.OPEN) {
+    const ping =
+      this._socket !== null &&
+      this._socket.readyState === this._socket.OPEN;
+
+    if (ping) {
       this._socket.ping();
     }
   }
 
-  _parse() {
+  _parseUrl() {
     const parsedUrl = parseUrl(this._socket.url);
 
     return {
@@ -473,7 +495,7 @@ export default class WsConnection extends EventEmitter {
     };
   }
 
-  _upgrade() {
+  _parseUpgrade() {
     let address = this._socket.upgradeReq.headers['x-real-ip'];
     let port = this._socket.upgradeReq.headers['x-real-port'];
 

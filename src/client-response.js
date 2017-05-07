@@ -19,16 +19,13 @@ export default class ClientResponse extends PassThrough {
   }
 
   destroy(abort = false) {
-    this._log('ClientResponse destroy %s', abort);
+    this._log('ClientResponse destroy abort=%s', abort);
 
     if (abort === true) {
       this.emit('abort');
     }
 
     this.end();
-
-    this._connection = null;
-    this._request = null;
   }
 
   connection(value = null) {
@@ -54,11 +51,13 @@ export default class ClientResponse extends PassThrough {
       return this._status;
     }
 
-    if (this._status === null) {
+    const emit = this._status === null;
+    this._status = value;
+
+    if (emit === true) {
       this._request.emit('response', this);
     }
 
-    this._status = value;
     return this;
   }
 
