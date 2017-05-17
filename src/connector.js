@@ -15,7 +15,7 @@ export default class WsConnector extends EventEmitter {
 
     this._connections = new Set();
 
-    this._handleConnection = (s) => this._connection(s);
+    this._handleConnection = (s, u) => this._connection(s, u);
     this._handleClose = (e) => this._close(e);
     this._handleError = (e) => this._error(e);
   }
@@ -97,13 +97,14 @@ export default class WsConnector extends EventEmitter {
     connection.removeListener('error', this._handleError);
   }
 
-  _connection(socket) {
+  _connection(socket, upgrade = null) {
     if (typeof socket.removeEventListener !== 'function') {
       socket.removeEventListener = socket.removeListener;
     }
 
     const connection = new WsConnection()
       .socket(socket)
+      .upgrade(upgrade)
       .router(this._router)
       .codec(this._codec);
 

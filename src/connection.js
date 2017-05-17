@@ -81,10 +81,6 @@ export default class WsConnection extends EventEmitter {
     this._socket = value;
     this._bindSocket();
 
-    if (typeof value.upgradeReq !== 'undefined') {
-      this.upgrade(value.upgradeReq);
-    }
-
     this.emit('open', value);
     return this;
   }
@@ -215,7 +211,7 @@ export default class WsConnection extends EventEmitter {
 
     if (this._address === null) {
       this._address =
-        typeof this._socket.upgradeReq === 'undefined' ?
+        typeof this._upgrade === null ?
         this._parseUrl() :
         this._parseUpgrade();
     }
@@ -496,12 +492,12 @@ export default class WsConnection extends EventEmitter {
   }
 
   _parseUpgrade() {
-    let address = this._socket.upgradeReq.headers['x-real-ip'];
-    let port = this._socket.upgradeReq.headers['x-real-port'];
+    let address = this._upgrade.headers['x-real-ip'];
+    let port = this._upgrade.headers['x-real-port'];
 
     if (typeof address === 'undefined') {
-      address = this._socket.upgradeReq.connection.remoteAddress;
-      port = this._socket.upgradeReq.connection.remotePort;
+      address = this._upgrade.connection.remoteAddress;
+      port = this._upgrade.connection.remotePort;
     }
 
     return {
