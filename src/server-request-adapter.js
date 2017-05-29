@@ -34,10 +34,10 @@ export default class ServerRequestAdapter extends PassThrough {
       return this;
     }
 
-    this._headers = Object.assign({},
-      request.headers, this._headers);
+    this.headers = Object.assign({},
+      request.headers, this.headers);
 
-    delete this._headers.accept;
+    delete this.headers.accept;
     return this;
   }
 }
