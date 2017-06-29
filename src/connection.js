@@ -383,6 +383,10 @@ export default class WsConnection extends EventEmitter {
     const id = Number(headers['x-id']);
     const more = Boolean(headers['x-more']);
 
+    if (this._outres.has(id) === false) {
+      return;
+    }
+
     const response = this._outres.get(id);
 
     response
