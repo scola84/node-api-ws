@@ -28,10 +28,10 @@ export default class WsConnection extends EventEmitter {
     this._reconnector = null;
 
     this._key = null;
-    this._upgrade = null;
     this._user = null;
 
     this._address = null;
+    this._headers = {};
     this._id = 0;
 
     this._inreq = new Map();
@@ -103,6 +103,15 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
+  headers(value = null) {
+    if (value === null) {
+      return this._headers;
+    }
+
+    this._headers = value;
+    return this;
+  }
+
   key(value = null) {
     if (value === null) {
       return this._key;
@@ -123,12 +132,10 @@ export default class WsConnection extends EventEmitter {
     return this;
   }
 
-  upgrade(value = null) {
-    if (value === null) {
-      return this._upgrade;
+  upgrade(value) {
+    if (typeof value.headers !== 'undefined') {
+      this._headers = value.headers;
     }
-
-    this._upgrade = value;
 
     if (typeof value.key !== 'undefined') {
       this._key = value.key;
@@ -138,6 +145,7 @@ export default class WsConnection extends EventEmitter {
       this._user = value.user;
     }
 
+    this._address = this._parseUpgrade(value);
     return this;
   }
 
@@ -210,10 +218,7 @@ export default class WsConnection extends EventEmitter {
     }
 
     if (this._address === null) {
-      this._address =
-        typeof this._upgrade === null ?
-        this._parseUrl() :
-        this._parseUpgrade();
+      this._address = this._parseUrl();
     }
 
     return this._address;
@@ -495,13 +500,13 @@ export default class WsConnection extends EventEmitter {
     };
   }
 
-  _parseUpgrade() {
-    let address = this._upgrade.headers['x-real-ip'];
-    let port = this._upgrade.headers['x-real-port'];
+  _parseUpgrade(upgrade) {
+    let address = upgrade.headers['x-real-ip'];
+    let port = upgrade.headers['x-real-port'];
 
     if (typeof address === 'undefined') {
-      address = this._upgrade.connection.remoteAddress;
-      port = this._upgrade.connection.remotePort;
+      address = upgrade.connection.remoteAddress;
+      port = upgrade.connection.remotePort;
     }
 
     return {

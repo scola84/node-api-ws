@@ -28,14 +28,10 @@ export default class ServerRequestAdapter extends PassThrough {
     }
 
     this._connection = value;
-    const request = this._connection.upgrade();
-
-    if (request === null) {
-      return this;
-    }
 
     this.headers = Object.assign({},
-      request.headers, this.headers);
+      this._connection.headers(),
+      this.headers);
 
     delete this.headers.accept;
     return this;
