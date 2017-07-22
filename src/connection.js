@@ -231,6 +231,7 @@ export default class WsConnection extends EventEmitter {
 
   _bindReconnector() {
     if (this._reconnector) {
+      this._reconnector.setMaxListeners(this._reconnector.getMaxListeners() + 1);
       this._reconnector.on('open', this._handleOpen);
       this._reconnector.on('reconnect', this._handleReconnect);
     }
@@ -238,6 +239,7 @@ export default class WsConnection extends EventEmitter {
 
   _unbindReconnector() {
     if (this._reconnector) {
+      this._reconnector.setMaxListeners(this._reconnector.getMaxListeners() - 1);
       this._reconnector.removeListener('open', this._handleOpen);
       this._reconnector.removeListener('reconnect', this._handleReconnect);
     }

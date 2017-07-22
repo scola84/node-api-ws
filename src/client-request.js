@@ -106,21 +106,25 @@ export default class ClientRequest extends Writable {
   }
 
   _bindThis() {
-    this.once('finish', this._handleFinish);
+    this.setMaxListeners(this.getMaxListeners() + 1);
+    this.on('finish', this._handleFinish);
   }
 
   _unbindThis() {
+    this.setMaxListeners(this.getMaxListeners() - 1);
     this.removeListener('finish', this._handleFinish);
   }
 
   _bindEncoder() {
     if (this._encoder) {
+      this._encoder.setMaxListeners(this._encoder.getMaxListeners() + 1);
       this._encoder.on('data', this._handleData);
     }
   }
 
   _unbindEncoder() {
     if (this._encoder) {
+      this._encoder.setMaxListeners(this._encoder.getMaxListeners() - 1);
       this._encoder.removeListener('data', this._handleData);
     }
   }

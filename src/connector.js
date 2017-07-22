@@ -66,13 +66,15 @@ export default class WsConnector extends EventEmitter {
 
   _bindServer() {
     if (this._server) {
-      this._server.addListener('connection', this._handleConnection);
-      this._server.addListener('error', this._handleError);
+      this._server.setMaxListeners(this._server.getMaxListeners() + 1);
+      this._server.on('connection', this._handleConnection);
+      this._server.on('error', this._handleError);
     }
   }
 
   _unbindServer() {
     if (this._server) {
+      this._server.setMaxListeners(this._server.getMaxListeners() - 1);
       this._server.removeListener('connection', this._handleConnection);
       this._server.removeListener('error', this._handleError);
     }
@@ -88,11 +90,13 @@ export default class WsConnector extends EventEmitter {
   }
 
   _bindConnection(connection) {
-    connection.addListener('close', this._handleClose);
-    connection.addListener('error', this._handleError);
+    connection.setMaxListeners(connection.getMaxListeners() + 1);
+    connection.on('close', this._handleClose);
+    connection.on('error', this._handleError);
   }
 
   _unbindConnection(connection) {
+    connection.setMaxListeners(connection.getMaxListeners() - 1);
     connection.removeListener('close', this._handleClose);
     connection.removeListener('error', this._handleError);
   }
