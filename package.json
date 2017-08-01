@@ -9,6 +9,7 @@
   "jsnext:main": "./index.js",
   "dependencies": {
     "@scola/api-http": "^6.0.0",
+    "@scola/error": "^5.1.0",
     "@scola/websocket": "^4.0.0",
     "qs": "^6.5.0"
   }
