@@ -155,12 +155,14 @@ export default class WsConnection extends EventEmitter {
     }
 
     const protocol = options.protocol || 'wss:';
+    const host = options.host || 'localhost';
     const path = options.path || '';
+    const port = options.port || '';
 
     const url =
       protocol +
-      '//' + options.host +
-      ':' + options.port +
+      '//' + host +
+      ':' + port +
       path;
 
     this._reconnector = new Reconnector();
