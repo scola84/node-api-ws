@@ -134,14 +134,17 @@ export default class ClientRequest extends Writable {
       data, this._ended);
 
     if (this._ended === false) {
-      this._headers['x-more'] = 1;
-    } else if (this._headers['x-more'] === 1) {
-      this._headers['x-more'] = 0;
+      this._headers.Connection = 'keep-alive';
+    } else if (this._headers.Connection === 'keep-alive') {
+      this._headers.Connection = 'close';
     }
+
+    const headers = this._connection
+      .translate(Object.assign({}, this._headers));
 
     data = [
       this._mpq(),
-      Object.assign({}, this._headers),
+      headers,
       data
     ];
 
@@ -172,9 +175,7 @@ export default class ClientRequest extends Writable {
   _finish() {
     this._log('ClientRequest _finish');
 
-    const more = Boolean(this._headers['x-more']);
-
-    if (more === false && this._writer) {
+    if (this._headers.Connection === 'close' && this._writer) {
       this._tearDown();
       return;
     }
@@ -191,7 +192,7 @@ export default class ClientRequest extends Writable {
 
     this._writer = new Writer();
     this._encoder = this._connection
-      .encoder(this._writer);
+      .encoder(this._writer, this);
 
     this._bindEncoder();
     return this._writer;

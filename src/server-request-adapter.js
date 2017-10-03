@@ -9,6 +9,7 @@ export default class ServerRequestAdapter extends PassThrough {
 
     this._log = debuglog('ws');
     this._connection = null;
+    this._request = null;
 
     const [method, url] = mpq.split(' ');
 
@@ -34,6 +35,17 @@ export default class ServerRequestAdapter extends PassThrough {
       this.headers);
 
     delete this.headers.accept;
+    return this;
+  }
+
+  request(value = null) {
+    if (value === null) {
+      return this._request;
+    }
+
+    this._request = value;
+    this._request.request(this);
+
     return this;
   }
 }

@@ -11,6 +11,8 @@ export default class ServerResponseAdapter extends Writable {
     this._log = debuglog('ws');
 
     this._connection = null;
+    this._response = null;
+
     this._writer = null;
     this._encoder = null;
 
@@ -37,6 +39,17 @@ export default class ServerResponseAdapter extends Writable {
     }
 
     this._connection = value;
+    return this;
+  }
+
+  response(value = null) {
+    if (value === null) {
+      return this._response;
+    }
+
+    this._response = value;
+    this._response.response(this);
+
     return this;
   }
 
@@ -81,17 +94,22 @@ export default class ServerResponseAdapter extends Writable {
     this._log('ServerResponseAdapter _write data=%j ended=%s',
       data, this._ended);
 
+    delete this._headers['Content-Length'];
+
     if (this._ended === false || this._writes > 1) {
-      this._headers['x-more'] = 1;
-    } else if (this._headers['x-more'] === 1) {
-      this._headers['x-more'] = 0;
+      this._headers.Connection = 'keep-alive';
+    } else if (this._headers.Connection === 'keep-alive') {
+      this._headers.Connection = 'close';
     }
 
     this._writes -= 1;
 
+    const headers = this._connection
+      .translate(Object.assign({}, this._headers));
+
     data = [
       this.statusCode,
-      Object.assign({}, this._headers),
+      headers,
       data
     ];
 
@@ -111,9 +129,7 @@ export default class ServerResponseAdapter extends Writable {
   _finish() {
     this._log('ServerResponseAdapter _finish');
 
-    const more = Boolean(this._headers['x-more']);
-
-    if (more === false && this._writer) {
+    if (this._headers.Connection === 'close' && this._writer) {
       this._tearDown();
       return;
     }
@@ -130,7 +146,7 @@ export default class ServerResponseAdapter extends Writable {
 
     this._writer = new Writer();
     this._encoder = this._connection
-      .encoder(this._writer);
+      .encoder(this._writer, this._response);
 
     this._bindEncoder();
     return this._writer;

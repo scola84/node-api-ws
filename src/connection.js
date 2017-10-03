@@ -34,6 +34,8 @@ export default class WsConnection extends EventEmitter {
     this._headers = {};
     this._id = 0;
 
+    this._dictionary = {};
+
     this._inreq = new Map();
     this._inres = new Map();
     this._outreq = new Map();
@@ -100,6 +102,15 @@ export default class WsConnection extends EventEmitter {
     }
 
     this._codec = value;
+    return this;
+  }
+
+  dictionary(value = null) {
+    if (value === null) {
+      return this._dictionary;
+    }
+
+    this._dictionary = value;
     return this;
   }
 
@@ -202,15 +213,15 @@ export default class WsConnection extends EventEmitter {
     this._socket.send(data);
   }
 
-  decoder(writer) {
+  decoder(writer, source) {
     return this._codec &&
-      this._codec.decoder(writer, this) ||
+      this._codec.decoder(writer, this, source) ||
       writer;
   }
 
-  encoder(writer) {
+  encoder(writer, target) {
     return this._codec &&
-      this._codec.encoder(writer, this) ||
+      this._codec.encoder(writer, this, target) ||
       writer;
   }
 
@@ -229,6 +240,57 @@ export default class WsConnection extends EventEmitter {
   connected() {
     return this._socket !== null &&
       this._socket.readyState === this._socket.OPEN;
+  }
+
+  translate(headers, read = false) {
+    const translated = Object.assign({}, headers);
+
+    Object.keys(this._dictionary).forEach((key) => {
+      const entry = this._dictionary[key];
+
+      if (typeof entry === 'undefined') {
+        return;
+      }
+
+      if (read === false) {
+        if (typeof headers[key] === 'undefined') {
+          return;
+        }
+
+        if (!entry.values) {
+          translated[entry.name] = headers[key];
+          delete translated[key];
+          return;
+        }
+
+        translated[entry.name] = entry.values[headers[key]];
+        delete translated[key];
+        return;
+      }
+
+      if (typeof headers[entry.name] === 'undefined') {
+        return;
+      }
+
+      if (entry.default) {
+        translated[key] = entry.default;
+      }
+
+      if (typeof entry.values === 'undefined') {
+        translated[key] = headers[entry.name];
+        delete translated[entry.name];
+        return;
+      }
+
+      Object.keys(entry.values).forEach((key2) => {
+        if (headers[entry.name] === entry.values[key2]) {
+          translated[key] = key2;
+          delete translated[entry.name];
+        }
+      });
+    });
+
+    return translated;
   }
 
   _bindReconnector() {
@@ -365,14 +427,15 @@ export default class WsConnection extends EventEmitter {
     this._log('Connection _request mpq=%s headers=%j body=%j',
       mpq, headers, body);
 
-    const id = Number(headers['x-id']);
-    const more = Boolean(headers['x-more']);
+    headers = this.translate(headers, true);
 
-    let request = this._inreq.get(id) || null;
-    let response = null;
+    let request = this._inreq.get(headers['Message-ID']) || null;
+    let response = this._inres.get(headers['Message-ID']) || null;
 
     if (request === null) {
       [request, response] = this._incoming(mpq, headers);
+      this._router.handleRequest(request, response);
+    } else if (body === null && headers.Connection === 'keep-alive') {
       this._router.handleRequest(request, response);
     }
 
@@ -380,7 +443,7 @@ export default class WsConnection extends EventEmitter {
       request.request().write(body);
     }
 
-    if (more === false) {
+    if (headers.Connection === 'close') {
       request.request().end();
     }
   }
@@ -389,14 +452,13 @@ export default class WsConnection extends EventEmitter {
     this._log('Connection _response status=%s headers=%j body=%j',
       status, headers, body);
 
-    const id = Number(headers['x-id']);
-    const more = Boolean(headers['x-more']);
+    headers = this.translate(headers, true);
 
-    if (this._outres.has(id) === false) {
+    if (this._outres.has(headers['Message-ID']) === false) {
       return;
     }
 
-    const response = this._outres.get(id);
+    const response = this._outres.get(headers['Message-ID']);
 
     response
       .status(status)
@@ -406,13 +468,13 @@ export default class WsConnection extends EventEmitter {
       response.write(body);
     }
 
-    if (more === false) {
+    if (headers.Connection === 'close') {
       response.end();
     }
   }
 
   _incoming(mpq, headers) {
-    const id = headers['x-id'];
+    const id = headers['Message-ID'];
 
     const requestAdapter = new ServerRequestAdapter(mpq, headers)
       .connection(this);
@@ -421,14 +483,17 @@ export default class WsConnection extends EventEmitter {
       .connection(this);
 
     const request = new ServerRequest()
-      .connection(this)
-      .request(requestAdapter);
+      .codec(false)
+      .connection(this);
 
     const response = new ServerResponse()
-      .connection(this)
-      .response(responseAdapter);
+      .codec(false)
+      .connection(this);
 
-    response.header('x-id', id);
+    requestAdapter.request(request);
+    responseAdapter.response(response);
+
+    response.header('Message-ID', id);
 
     this._inreq.set(id, request);
     this._inres.set(id, response);
@@ -456,7 +521,7 @@ export default class WsConnection extends EventEmitter {
 
     const request = new ClientRequest()
       .connection(this)
-      .header('x-id', id);
+      .header('Message-ID', id);
 
     const response = new ClientResponse()
       .connection(this)
