@@ -54,7 +54,8 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   getHeader(name) {
-    return this._headers[name] || this._headers[name.toLowerCase()];
+    return this._headers[name] ||
+      this._headers[name.toLowerCase()];
   }
 
   setHeader(name, value) {
@@ -94,12 +95,10 @@ export default class ServerResponseAdapter extends Writable {
     this._log('ServerResponseAdapter _write data=%j ended=%s',
       data, this._ended);
 
-    delete this._headers['Content-Length'];
-
     if (this._ended === false || this._writes > 1) {
-      this._headers.Connection = 'keep-alive';
-    } else if (this._headers.Connection === 'keep-alive') {
-      this._headers.Connection = 'close';
+      this.setHeader('Connection', 'keep-alive');
+    } else if (this.getHeader('Connection') === 'keep-alive') {
+      this.setHeader('Connection', 'close');
     }
 
     this._writes -= 1;
@@ -129,7 +128,7 @@ export default class ServerResponseAdapter extends Writable {
   _finish() {
     this._log('ServerResponseAdapter _finish');
 
-    if (this._headers.Connection === 'close' && this._writer) {
+    if (this.getHeader('Connection') === 'close' && this._writer) {
       this._tearDown();
       return;
     }

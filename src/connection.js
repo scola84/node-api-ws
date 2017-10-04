@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { parse as parseUrl } from 'url';
 import { debuglog } from 'util';
+import pick from 'lodash-es/pick';
 
 import {
   ServerRequest,
@@ -145,7 +146,10 @@ export default class WsConnection extends EventEmitter {
 
   upgrade(value) {
     if (typeof value.headers !== 'undefined') {
-      this._headers = value.headers;
+      this._headers = pick(value.headers, [
+        'upgrade',
+        'user-agent'
+      ]);
     }
 
     if (typeof value.key !== 'undefined') {

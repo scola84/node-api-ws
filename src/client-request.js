@@ -134,9 +134,9 @@ export default class ClientRequest extends Writable {
       data, this._ended);
 
     if (this._ended === false) {
-      this._headers.Connection = 'keep-alive';
-    } else if (this._headers.Connection === 'keep-alive') {
-      this._headers.Connection = 'close';
+      this.header('Connection', 'keep-alive');
+    } else if (this.header('Connection') === 'keep-alive') {
+      this.header('Connection', 'close');
     }
 
     const headers = this._connection
@@ -175,7 +175,7 @@ export default class ClientRequest extends Writable {
   _finish() {
     this._log('ClientRequest _finish');
 
-    if (this._headers.Connection === 'close' && this._writer) {
+    if (this.header('Connection') === 'close' && this._writer) {
       this._tearDown();
       return;
     }

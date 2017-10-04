@@ -34,7 +34,6 @@ export default class ServerRequestAdapter extends PassThrough {
       this._connection.headers(),
       this.headers);
 
-    delete this.headers.accept;
     return this;
   }
 
