@@ -51,13 +51,7 @@ export default class ClientResponse extends PassThrough {
       return this._status;
     }
 
-    const emit = this._status === null;
     this._status = value;
-
-    if (emit === true) {
-      this._request.emit('response', this);
-    }
-
     return this;
   }
 

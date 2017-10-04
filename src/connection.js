@@ -252,10 +252,6 @@ export default class WsConnection extends EventEmitter {
     Object.keys(this._dictionary).forEach((key) => {
       const entry = this._dictionary[key];
 
-      if (typeof entry === 'undefined') {
-        return;
-      }
-
       if (read === false) {
         if (typeof headers[key] === 'undefined') {
           return;
@@ -272,12 +268,12 @@ export default class WsConnection extends EventEmitter {
         return;
       }
 
-      if (typeof headers[entry.name] === 'undefined') {
-        return;
-      }
-
       if (entry.default) {
         translated[key] = entry.default;
+      }
+
+      if (typeof headers[entry.name] === 'undefined') {
+        return;
       }
 
       if (typeof entry.values === 'undefined') {
@@ -463,10 +459,17 @@ export default class WsConnection extends EventEmitter {
     }
 
     const response = this._outres.get(headers['Message-ID']);
+    const emit = response.status() === null;
 
     response
       .status(status)
       .headers(headers);
+
+    if (emit === true) {
+      response
+        .request()
+        .emit('response', response);
+    }
 
     if (body !== null) {
       response.write(body);
