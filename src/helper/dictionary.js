@@ -1,7 +1,6 @@
 export default {
   'Connection': {
     name: 'con',
-    default: 'close',
     values: {
       'keep-alive': 1,
       'close': 0

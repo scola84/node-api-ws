@@ -128,7 +128,7 @@ export default class ServerResponseAdapter extends Writable {
   _finish() {
     this._log('ServerResponseAdapter _finish');
 
-    if (this.getHeader('Connection') === 'close' && this._writer) {
+    if (this.getHeader('Connection') !== 'keep-alive' && this._writer) {
       this._tearDown();
       return;
     }

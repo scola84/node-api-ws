@@ -175,7 +175,7 @@ export default class ClientRequest extends Writable {
   _finish() {
     this._log('ClientRequest _finish');
 
-    if (this.header('Connection') === 'close' && this._writer) {
+    if (this.header('Connection') !== 'keep-alive' && this._writer) {
       this._tearDown();
       return;
     }

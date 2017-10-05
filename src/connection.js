@@ -268,10 +268,6 @@ export default class WsConnection extends EventEmitter {
         return;
       }
 
-      if (entry.default) {
-        translated[key] = entry.default;
-      }
-
       if (typeof headers[entry.name] === 'undefined') {
         return;
       }
@@ -443,7 +439,7 @@ export default class WsConnection extends EventEmitter {
       request.request().write(body);
     }
 
-    if (headers.Connection === 'close') {
+    if (headers.Connection !== 'keep-alive') {
       request.request().end();
     }
   }
@@ -475,7 +471,7 @@ export default class WsConnection extends EventEmitter {
       response.write(body);
     }
 
-    if (headers.Connection === 'close') {
+    if (headers.Connection !== 'keep-alive') {
       response.end();
     }
   }
