@@ -17,6 +17,8 @@ import ClientResponse from './client-response';
 import ServerRequestAdapter from './server-request-adapter';
 import ServerResponseAdapter from './server-response-adapter';
 
+const mpqTest = (/^(GET|HEAD|PATCH|POST|PUT|DELETE)\s(.+)$/);
+
 export default class WsConnection extends EventEmitter {
   constructor() {
     super();
@@ -386,7 +388,7 @@ export default class WsConnection extends EventEmitter {
       return;
     }
 
-    const isRequest = (/^(GET|POST|PUT|DELETE)\s(.+)$/).test(data[0]);
+    const isRequest = mpqTest.test(data[0]);
     const isResponse = typeof data[0] === 'number';
 
     if (isRequest === false && isResponse === false) {
