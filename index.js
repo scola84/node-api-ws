@@ -1,5 +1,6 @@
 import WsConnection from './src/connection';
 import WsConnector from './src/connector';
+import dictionary from './src/helper/dictionary';
 import strings from './src/i18n/strings';
 
 function load(app) {
@@ -11,5 +12,6 @@ function load(app) {
 export {
   WsConnection,
   WsConnector,
+  dictionary,
   load
 };
