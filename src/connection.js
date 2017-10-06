@@ -434,6 +434,7 @@ export default class WsConnection extends EventEmitter {
       [request, response] = this._incoming(mpq, headers);
       this._router.handleRequest(request, response);
     } else if (body === null && headers.Connection === 'keep-alive') {
+      request.headers(headers);
       this._router.handleRequest(request, response);
     }
 
