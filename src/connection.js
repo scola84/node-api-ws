@@ -174,7 +174,7 @@ export default class WsConnection extends EventEmitter {
     const protocol = options.protocol || 'wss:';
     const host = options.host || 'localhost';
     const path = options.path || '';
-    const port = options.port || '';
+    const port = options.port || '443';
 
     const url =
       protocol +
