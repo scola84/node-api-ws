@@ -325,19 +325,19 @@ export default class WsConnection extends EventEmitter {
 
   _close(event, force = false) {
     this._inreq.forEach((request) => {
-      request.destroy(true);
+      request.destroy();
     });
 
     this._inres.forEach((response) => {
-      response.destroy(true);
+      response.destroy();
     });
 
     this._outreq.forEach((request) => {
-      request.destroy(true);
+      request.destroy();
     });
 
     this._outres.forEach((response) => {
-      response.destroy(true);
+      response.destroy();
     });
 
     if (this._reconnector && force === false) {
@@ -547,6 +547,8 @@ export default class WsConnection extends EventEmitter {
       this._log('Connection _outgoing end #outres=%d',
         this._outres.size);
     });
+
+    response.resume();
 
     this._log('Connection _outgoing id=%s #outreq=%d #outres=%d',
       id, this._outreq.size, this._outres.size);

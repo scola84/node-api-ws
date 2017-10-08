@@ -18,14 +18,14 @@ export default class ClientResponse extends PassThrough {
     this._data = null;
   }
 
-  destroy(abort = false) {
-    this._log('ClientResponse destroy abort=%s', abort);
+  destroy() {
+    this._destroy(null, () => {});
+  }
 
-    if (abort === true) {
-      this.emit('abort');
-    }
-
+  _destroy(error, callback) {
+    this.push(null);
     this.end();
+    callback(error);
   }
 
   connection(value = null) {

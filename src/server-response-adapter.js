@@ -29,8 +29,12 @@ export default class ServerResponseAdapter extends Writable {
   }
 
   destroy() {
-    this._log('ServerResponseAdapter destroy');
+    this._destroy(null, () => {});
+  }
+
+  _destroy(error, callback) {
     this._tearDown();
+    callback(error);
   }
 
   connection(value = null) {
@@ -65,6 +69,16 @@ export default class ServerResponseAdapter extends Writable {
   removeHeader(name) {
     delete this._headers[name];
     delete this._headers[name.toLowerCase()];
+  }
+
+  encoder() {
+    this._setUp();
+    return this._encoder;
+  }
+
+  writer() {
+    this._setUp();
+    return this._writer;
   }
 
   _bindThis() {
@@ -112,7 +126,7 @@ export default class ServerResponseAdapter extends Writable {
       data
     ];
 
-    this._setUp().write(data, encoding, callback);
+    this.writer().write(data, encoding, callback);
   }
 
   _data(data) {
@@ -140,7 +154,7 @@ export default class ServerResponseAdapter extends Writable {
 
   _setUp() {
     if (this._writer) {
-      return this._writer;
+      return;
     }
 
     this._writer = new Writer();
@@ -148,7 +162,6 @@ export default class ServerResponseAdapter extends Writable {
       .encoder(this._writer, this._response);
 
     this._bindEncoder();
-    return this._writer;
   }
 
   _tearDown() {

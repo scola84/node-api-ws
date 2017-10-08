@@ -29,9 +29,13 @@ export default class ClientRequest extends Writable {
     this._bindThis();
   }
 
-  destroy(abort) {
-    this._log('ClientRequest destroy abort=%s', abort);
-    this._tearDown(abort);
+  destroy() {
+    this._destroy(null, () => {});
+  }
+
+  _destroy(error, callback) {
+    this._tearDown();
+    callback(error);
   }
 
   connection(value = null) {
@@ -100,6 +104,16 @@ export default class ClientRequest extends Writable {
     return this;
   }
 
+  encoder() {
+    this._setUp();
+    return this._encoder;
+  }
+
+  writer() {
+    this._setUp();
+    return this._writer;
+  }
+
   end(data, encoding, callback) {
     this._ended = true;
     super.end(data, encoding, callback);
@@ -148,7 +162,7 @@ export default class ClientRequest extends Writable {
       data
     ];
 
-    this._setUp().write(data, encoding, callback);
+    this.writer().write(data, encoding, callback);
   }
 
   _mpq() {
@@ -187,7 +201,7 @@ export default class ClientRequest extends Writable {
 
   _setUp() {
     if (this._writer) {
-      return this._writer;
+      return;
     }
 
     this._writer = new Writer();
@@ -195,20 +209,15 @@ export default class ClientRequest extends Writable {
       .encoder(this._writer, this);
 
     this._bindEncoder();
-    return this._writer;
   }
 
-  _tearDown(abort = false) {
+  _tearDown() {
     if (this._writer) {
       this._writer.end();
     }
 
     this._unbindThis();
     this._unbindEncoder();
-
-    if (abort === true) {
-      this.emit('abort');
-    }
 
     this.end();
   }

@@ -19,8 +19,13 @@ export default class ServerRequestAdapter extends PassThrough {
   }
 
   destroy() {
-    this._log('ServerRequestAdapter destroy');
+    this._destroy(null, () => {});
+  }
+
+  _destroy(error, callback) {
+    this.push(null);
     this.end();
+    callback(error);
   }
 
   connection(value) {
